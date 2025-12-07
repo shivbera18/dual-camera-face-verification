@@ -79,7 +79,44 @@
 
 ---
 
-## Slide 5: Our Proposed Solution
+## Slide 5: Evolution - From Siamese Networks to ArcFace
+
+### Why We're NOT Using Siamese Networks
+
+**What are Siamese Networks?**
+- Twin neural networks with shared weights
+- Learn similarity by comparing face pairs
+- Popular in 2015-2018 (FaceNet era)
+- Used contrastive loss or triplet loss
+
+**Why Industry Moved Away:**
+
+| Aspect | Siamese Networks (2015) | ArcFace (2019) - Current Standard |
+|--------|------------------------|-----------------------------------|
+| **Accuracy** | 97-98% on LFW | **99.83% on LFW** |
+| **Training** | Needs pairs/triplets (slow) | Direct classification (fast) |
+| **Loss Function** | Contrastive/Triplet loss | Angular margin loss |
+| **Mining** | Hard negative mining needed | No mining needed |
+| **Convergence** | Slower, unstable | Faster, stable |
+
+**Current Industry Standard:**
+- **ArcFace** (Additive Angular Margin Loss)
+- Used by: Apple Face ID, Alibaba, Tencent, InsightFace
+- Better embeddings: More discriminative, better separated
+- Easier deployment: Pre-trained models available
+
+**Our Choice:**
+- We'll use **ArcFace** for face verification (when we reach that stage)
+- Pre-trained on millions of faces
+- No need to train from scratch
+- Industry-proven performance
+
+**Key Takeaway:**
+Siamese networks were important historically but have been superseded by better methods like ArcFace for production systems.
+
+---
+
+## Slide 6: Our Proposed Solution
 
 ### Dual-Camera Stereo Vision Approach
 
@@ -92,16 +129,18 @@
 1. **Stereo Depth Analysis** → Detect flat surfaces (photos/screens)
 2. **Face Detection (RetinaFace)** → Accurate face localization
 3. **Deepfake Detection (EfficientNet-B0)** → Identify AI-generated faces
-4. **Model Compression (LoRA)** → Enable edge deployment
+4. **Face Verification (ArcFace)** → Match identity (NOT Siamese)
+5. **Model Compression (LoRA)** → Enable edge deployment
 
 **Key Advantages:**
 - Cost-effective: Standard webcams (~₹1,500 each)
 - Real-time capable: Target 15-30 FPS
+- Modern architecture: Using current industry standards (ArcFace, not Siamese)
 - Efficient models: Deployable on standard hardware
 
 ---
 
-## Slide 6: Project Scope & Current Progress
+## Slide 7: Project Scope & Current Progress
 
 ### What We're Implementing
 
@@ -124,7 +163,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 7: RetinaFace - Face Detection (Part 1)
+## Slide 8: RetinaFace - Face Detection (Part 1)
 
 ### What is RetinaFace?
 
@@ -148,7 +187,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 8: RetinaFace - Performance Comparison (Part 2)
+## Slide 9: RetinaFace - Performance Comparison (Part 2)
 
 ### Why RetinaFace is the Best Choice
 
