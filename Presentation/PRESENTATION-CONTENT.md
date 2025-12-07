@@ -234,30 +234,61 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 10: RetinaFace - Performance Comparison (Part 2)
+## Slide 10: RetinaFace vs MTCNN - Detailed Comparison
 
-### Why RetinaFace is the Best Choice
+### Why RetinaFace Over MTCNN?
+
+**MTCNN (Multi-task Cascaded CNN) - 2016:**
+- 3-stage cascade: P-Net → R-Net → O-Net
+- Each stage filters candidates progressively
+- Provides 5 facial landmarks
+- Popular in 2016-2018
 
 **Performance Comparison:**
 
-| Detector | Accuracy | Speed | Landmarks | Notes |
-|----------|----------|-------|-----------|-------|
-| Haar Cascades | 85% | 5ms | ❌ No | Old method, fast but inaccurate |
-| MTCNN | 92-94% | 50-80ms | ✅ Yes | Slow, 3-stage cascade |
-| YOLO-Face | 94-95% | 10-15ms | ❌ No | Fast but no landmarks |
-| **RetinaFace** | **97%** | **20-30ms** | ✅ **Yes (5)** | **Best balance** |
+| Aspect | MTCNN (2016) | RetinaFace (2020) |
+|--------|--------------|-------------------|
+| **Accuracy** | 92-94% | **97%** |
+| **Speed** | 50-80ms | **20-30ms** |
+| **Architecture** | 3-stage cascade | Single-stage FPN |
+| **Landmarks** | 5 points | 5 points |
+| **Small faces** | Struggles | Excellent |
+| **Occlusions** | Poor | Robust |
+| **Training** | Complex | Simpler |
 
-**Why We Selected RetinaFace:**
-1. Highest accuracy: 97% on WIDER FACE benchmark
-2. Provides precise 5 landmarks for alignment
-3. Reasonable speed: 20-30ms per frame
-4. Robust to occlusions and challenging lighting
-5. Pre-trained models available (InsightFace library)
+**Why MTCNN Doesn't Work for Us:**
 
-**Practical Benefits:**
-- No training needed (use pre-trained model)
-- Works on various face sizes and angles
-- Reliable in real-world conditions
+**1. Speed Issues (Critical for Real-time)**
+- 50-80ms per frame = 12-20 FPS maximum
+- We need 15-30 FPS for dual cameras
+- MTCNN would bottleneck our entire pipeline
+- RetinaFace: 20-30ms = 33-50 FPS possible
+
+**2. Lower Accuracy**
+- MTCNN: 92-94% on WIDER FACE
+- RetinaFace: 97% on WIDER FACE
+- **3% difference = 300 more errors per 10,000 faces**
+
+**3. Poor Performance on Small/Occluded Faces**
+- MTCNN struggles with faces <40×40 pixels
+- Fails with partial occlusions (sunglasses, masks)
+- Our system needs robustness for various conditions
+
+**4. Cascade Architecture Limitations**
+- Each stage can introduce errors
+- If P-Net misses a face, R-Net and O-Net never see it
+- Single-stage RetinaFace is more reliable
+
+**Why We Chose RetinaFace:**
+1. ✅ **3× faster** than MTCNN (20-30ms vs 50-80ms)
+2. ✅ **3% more accurate** (97% vs 92-94%)
+3. ✅ Better on small faces and occlusions
+4. ✅ Single-stage = more reliable
+5. ✅ Pre-trained models available (InsightFace)
+6. ✅ Industry standard (2020-2024)
+
+**The Bottom Line:**
+MTCNN was good in 2016, but RetinaFace is faster, more accurate, and more robust - essential for our real-time dual-camera system.
 
 ---
 
