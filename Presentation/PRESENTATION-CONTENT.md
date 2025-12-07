@@ -214,7 +214,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 9: EfficientNet-B0 - Deepfake Detection (Part 1)
+## Slide 10: EfficientNet-B0 - Deepfake Detection (Part 1)
 
 ### The Compound Scaling Innovation
 
@@ -249,7 +249,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 10: EfficientNet-B0 - Efficiency Comparison (Part 2)
+## Slide 11: EfficientNet-B0 - Efficiency Comparison (Part 2)
 
 ### Best Accuracy-Efficiency Trade-off
 
