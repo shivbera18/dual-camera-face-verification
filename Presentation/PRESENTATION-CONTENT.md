@@ -8,10 +8,10 @@
 ### Dual-Camera Face Verification System
 **Stereo Vision-Based Liveness Detection with Deepfake Prevention**
 
-**Presented by:** Shivratan Bera (2022BECE103)  
+**Presented by:** Shivratan (2022BECE103)  Arslan Sufi (2022BECE057)
 **Department:** Electronics and Communication Engineering  
 **Institution:** National Institute of Technology, Srinagar  
-**Guide:** Dr. Gausia Qazi  
+**Guide:** Prof. A A Mir  
 **Date:** December 2024
 
 ---
@@ -66,417 +66,389 @@
 
 | Approach | Accuracy | Cost | Limitation |
 |----------|----------|------|------------|
-| **Depth Sensors** | >98% | $100-300 | Too expensive, not in consumer devices |
+| **Depth Sensors** | >98% | ₹15,000+ | Too expensive, not in consumer devices |
 | **Texture-Based (LBP)** | 85-90% | Low | Fails on high-quality prints, 5-8% false rejection |
 | **CNN Anti-Spoofing** | 92-95% | Medium | Poor generalization to new attacks |
-| **Deepfake Detectors** | 90-95% | Medium | 70-80% on unseen methods, adversarial arms race |
+| **Deepfake Detectors** | 90-95% | Medium | 70-80% on unseen methods |
 
 **Fundamental Problems:**
 - Single-camera architectural limitation
 - Generalization failure to novel attacks
 - Cost vs accuracy trade-off
-- Separate systems for spoofing vs deepfakes
 - High computational requirements (GPU needed)
 
 ---
 
 ## Slide 5: Our Proposed Solution
 
-### Dual-Camera System with Multi-Modal Defense
+### Dual-Camera Stereo Vision Approach
 
 **Core Innovation:**
 - Use TWO commodity webcams (₹2,400 total)
 - Compute depth through stereo vision
-- Achieve depth sensor accuracy at 1/5 the cost
+- Achieve depth sensor capability at 1/5 the cost
 
-**Multi-Layered Security:**
+**Planned System Components:**
 1. **Stereo Depth Analysis** → Detect flat surfaces (photos/screens)
-2. **Texture Analysis (LBP+SVM)** → Detect printing artifacts
-3. **Deepfake Detection (EfficientNet)** → Identify AI-generated faces
-4. **Face Verification (ArcFace)** → Match identity
+2. **Face Detection (RetinaFace)** → Accurate face localization
+3. **Deepfake Detection (EfficientNet-B0)** → Identify AI-generated faces
+4. **Model Compression (LoRA)** → Enable edge deployment
 
 **Key Advantages:**
-- Defense-in-depth: Multiple security layers
 - Cost-effective: Standard webcams (~₹1,500 each)
-- Real-time: 15-30 FPS on CPU
-- Unified framework: Handles all attack types
+- Real-time capable: Target 15-30 FPS
+- Efficient models: Deployable on standard hardware
 
 ---
 
-## Slide 6: System Architecture Overview
+## Slide 6: Project Scope & Current Progress
 
-### Six-Stage Processing Pipeline
+### What We're Implementing
 
-```
-┌─────────────────────────────────────────────────┐
-│  Stage 1: Stereo Camera Calibration             │
-│  (One-time: Zhang's checkerboard method)        │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│  Stage 2: Synchronized Frame Acquisition        │
-│  (Left + Right cameras, <50ms sync error)       │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│  Stage 3: Face Detection & Tracking             │
-│  (RetinaFace: 97% accuracy, 5 landmarks)        │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌──────────────────────┬──────────────────────────┐
-│  Depth-Based         │  Texture-Based           │
-│  Liveness (SGBM)     │  Anti-Spoofing (LBP+SVM) │
-│  Stage 4             │  Stage 4                 │
-└──────────────────────┴──────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│  Stage 5: Deepfake Detection                    │
-│  (EfficientNet-B0 + Temporal Consistency)       │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│  Stage 6: Face Verification                     │
-│  (ArcFace: 512-D embeddings, cosine similarity) │
-└─────────────────────────────────────────────────┘
-                      ↓
-              ACCEPT / REJECT
-```
+**Current Focus Areas:**
+1. ✅ Literature review and system design
+2. ✅ Model selection and architecture planning
+3. 🔄 Understanding key components:
+   - RetinaFace for face detection
+   - EfficientNet-B0 for deepfake detection
+   - LoRA for model compression
+
+**Implementation Phases:**
+- **Phase 1** (Current): Research and design
+- **Phase 2** (Next): Hardware setup and calibration
+- **Phase 3** (Future): Model training and integration
+- **Phase 4** (Future): Testing and optimization
+
+**Today's Presentation:**
+Focus on the three key models we'll be using
 
 ---
 
-## Slide 7: Stage 1-3: Calibration to Detection
+## Slide 7: RetinaFace - Face Detection (Part 1)
 
-### Stereo Calibration & Face Detection
+### What is RetinaFace?
 
-**Stereo Camera Calibration:**
-- Zhang's checkerboard method (9×6 corners, 25mm squares)
-- Computes intrinsic parameters: focal length (fx, fy), principal point (cx, cy)
-- Computes extrinsic parameters: rotation matrix R, translation vector t
-- Rectification: Aligns image planes for efficient stereo matching
-- Reprojection error: <0.5 pixels
+**Purpose:**
+- Detect faces in images/video frames
+- Locate 5 facial landmarks (eyes, nose, mouth corners)
+- Essential first step for any face verification system
 
-**Synchronized Frame Acquisition:**
-- Multi-threading with timestamp verification
-- Synchronization error: <50ms
-- Rectified images: Corresponding points on same horizontal scanline
-
-**Face Detection (RetinaFace):**
+**Key Innovation:**
 - Feature Pyramid Network (FPN) backbone
-- Multi-scale detection: 16×16 to full resolution
-- Outputs: Bounding box + 5 landmarks (eyes, nose, mouth)
-- 97% accuracy on WIDER FACE benchmark
-- Inference: 20-30ms per frame
-
----
-
-## Slide 8: Stage 4: Multi-Modal Anti-Spoofing
-
-### Depth + Texture = Robust Liveness Detection
-
-**Depth-Based Liveness (SGBM Algorithm):**
-- Computes disparity map from stereo pair
-- Converts to metric depth: Depth(x,y) = (B × f) / d(x,y)
-  - B = baseline (6-10 cm), f = focal length, d = disparity
-
-**Depth Features Extracted:**
-- Depth range: max(Depth) - min(Depth)
-  - Real faces: 8-15 cm
-  - Photos/screens: <2 cm
-- Nose prominence: 2-3 cm forward on real faces
-- Depth variance: σ² measures smoothness
-- Depth continuity: Gradient smoothness
-
-**Texture-Based Anti-Spoofing (LBP + SVM):**
-- Local Binary Patterns: 8-bit encoding of local texture
-- Detects printing artifacts and moiré patterns
-- SVM with RBF kernel trained on Replay-Attack dataset
-- 1,300 videos, 50 subjects, photo + video attacks
-
-**Score Fusion:**
-- s_liveness = 0.6 × s_depth + 0.4 × s_texture
-- Weighted average based on empirical validation
-- Even if one modality fooled, other provides protection
-
----
-
-## Slide 9: RetinaFace - State-of-the-Art Face Detection
-
-### Why RetinaFace?
-
-**Architecture Highlights:**
-- Feature Pyramid Network (FPN) for multi-scale detection
-- Joint multi-task learning (5 objectives simultaneously):
+- Multi-scale detection: Finds faces from tiny (16×16) to large
+- Joint multi-task learning:
   1. Face classification (face vs background)
-  2. Bounding box regression
-  3. Five facial landmark localization
-  4. 3D face vertices (optional)
-  5. Pixel-wise segmentation (optional)
+  2. Bounding box regression (where is the face?)
+  3. Five facial landmark localization (precise points)
+
+**Why Landmarks Matter:**
+- Enable face alignment before recognition
+- Improves verification accuracy by 3-5%
+- Needed for consistent face cropping
+
+---
+
+## Slide 8: RetinaFace - Performance Comparison (Part 2)
+
+### Why RetinaFace is the Best Choice
 
 **Performance Comparison:**
 
-| Detector | Accuracy | Speed | Landmarks |
-|----------|----------|-------|-----------|
-| Haar Cascades | 85% | 5ms | ❌ No |
-| MTCNN | 92-94% | 50-80ms | ✅ Yes |
-| YOLO-Face | 94-95% | 10-15ms | ❌ No |
-| **RetinaFace** | **97%** | **20-30ms** | ✅ **Yes (5 points)** |
+| Detector | Accuracy | Speed | Landmarks | Notes |
+|----------|----------|-------|-----------|-------|
+| Haar Cascades | 85% | 5ms | ❌ No | Old method, fast but inaccurate |
+| MTCNN | 92-94% | 50-80ms | ✅ Yes | Slow, 3-stage cascade |
+| YOLO-Face | 94-95% | 10-15ms | ❌ No | Fast but no landmarks |
+| **RetinaFace** | **97%** | **20-30ms** | ✅ **Yes (5)** | **Best balance** |
 
-**Why We Chose RetinaFace:**
-- Highest accuracy (97% on WIDER FACE)
-- Provides precise landmarks for face alignment
-- Reasonable speed for real-time processing
-- Detects faces at multiple scales (tiny to large)
-- Robust to occlusions and challenging conditions
+**Why We Selected RetinaFace:**
+1. Highest accuracy: 97% on WIDER FACE benchmark
+2. Provides precise 5 landmarks for alignment
+3. Reasonable speed: 20-30ms per frame
+4. Robust to occlusions and challenging lighting
+5. Pre-trained models available (InsightFace library)
+
+**Practical Benefits:**
+- No training needed (use pre-trained model)
+- Works on various face sizes and angles
+- Reliable in real-world conditions
 
 ---
 
-## Slide 10: EfficientNet-B0 - Efficient Deepfake Detection
+## Slide 9: EfficientNet-B0 - Deepfake Detection (Part 1)
 
-### Compound Scaling for Optimal Efficiency
+### The Compound Scaling Innovation
 
-**The EfficientNet Innovation:**
-- Traditional scaling: Increase depth OR width OR resolution
-- EfficientNet: Scale ALL THREE simultaneously with compound coefficient φ
+**Traditional CNN Scaling Problem:**
+- Want better accuracy? Make network deeper OR wider OR higher resolution
+- But which one? How much?
+- Random scaling is inefficient
+
+**EfficientNet's Solution: Compound Scaling**
+- Scale depth, width, AND resolution together
+- Use compound coefficient φ to balance all three
 
 **Compound Scaling Formula:**
 ```
-depth:      d = α^φ
-width:      w = β^φ  
-resolution: r = γ^φ
+depth:      d = α^φ    (number of layers)
+width:      w = β^φ    (number of channels)
+resolution: r = γ^φ    (image size)
 
 Constraint: α × β² × γ² ≈ 2
-            α ≥ 1, β ≥ 1, γ ≥ 1
 ```
 
-**EfficientNet-B0 Architecture:**
-- Mobile Inverted Bottleneck Convolution (MBConv) blocks
-- Squeeze-and-excitation for channel attention
+**Why This Works:**
+- Balanced scaling is more efficient than scaling one dimension
+- Achieves better accuracy with fewer parameters
+- Optimized through neural architecture search
+
+**EfficientNet-B0 Basics:**
+- Baseline model with φ=1
 - Input: 224×224 RGB images
-- 7 stages with progressive channel increase
+- Uses MBConv blocks (mobile inverted bottleneck)
+- 7 stages with squeeze-and-excitation attention
+
+---
+
+## Slide 10: EfficientNet-B0 - Efficiency Comparison (Part 2)
+
+### Best Accuracy-Efficiency Trade-off
 
 **Performance Comparison:**
 
-| Model | Parameters | FLOPs | ImageNet Acc | Deepfake Acc |
-|-------|------------|-------|--------------|--------------|
-| ResNet-50 | 25.6M | 4.1B | 76.0% | 94% |
-| XceptionNet | 23M | 8.4B | - | 95-96% |
-| MobileNetV2 | 3.5M | 0.3B | 72.0% | 91-92% |
-| **EfficientNet-B0** | **5.3M** | **0.39B** | **77.1%** | **94-95%** |
+| Model | Parameters | FLOPs | ImageNet Top-1 | Our Use Case |
+|-------|------------|-------|----------------|--------------|
+| ResNet-50 | 25.6M | 4.1B | 76.0% | Too large |
+| XceptionNet | 23M | 8.4B | - | Very slow |
+| MobileNetV2 | 3.5M | 0.3B | 72.0% | Less accurate |
+| **EfficientNet-B0** | **5.3M** | **0.39B** | **77.1%** | **Perfect!** |
 
-**Why EfficientNet-B0:**
-- Best accuracy-efficiency trade-off
-- 5× fewer parameters than ResNet-50
-- 10× fewer FLOPs than ResNet-50
-- Enables real-time CPU inference (15-20 FPS)
+**Key Advantages:**
+- **5× fewer parameters** than ResNet-50
+- **10× fewer FLOPs** than ResNet-50
+- **Better accuracy** than all of them
+- Enables **CPU inference** (15-20 FPS possible)
+
+**For Deepfake Detection:**
+- Fine-tune on FaceForensics++ dataset
+- Binary classification: Real vs Deepfake
+- Expected accuracy: 94-95%
+- Training time: 2-4 hours on GPU
+
+**Why This Matters:**
+- Can run on standard laptops (no GPU needed for inference)
+- Small model size enables edge deployment
+- Fast enough for real-time video processing
 
 ---
 
 ## Slide 11: EfficientNet Training Strategy
 
-### Transfer Learning + Fine-Tuning
+### Transfer Learning Approach
 
 **Training Pipeline:**
 
-1. **Start with Pre-trained Weights**
-   - ImageNet pre-trained EfficientNet-B0
-   - Already learned general visual features (edges, textures, shapes)
+**Step 1: Start with Pre-trained Model**
+- Use ImageNet pre-trained EfficientNet-B0
+- Already knows general visual features:
+  - Edges, textures, shapes, colors
+  - Basic object recognition patterns
 
-2. **Replace Classification Head**
-   - Remove 1000-class ImageNet classifier
-   - Add binary classifier: Real vs Deepfake
+**Step 2: Modify for Our Task**
+- Remove: 1000-class ImageNet classifier
+- Add: Binary classifier (Real vs Deepfake)
+- Keep: All convolutional layers
 
-3. **Freeze Early Layers**
-   - Early layers: Low-level features (edges, colors)
-   - Keep frozen to preserve general features
+**Step 3: Freeze Early Layers**
+- Early layers: Generic low-level features
+- Don't need retraining (edges are edges)
+- Saves training time and prevents overfitting
 
-4. **Fine-tune Later Layers**
-   - Later layers: High-level semantic features
-   - Fine-tune on FaceForensics++ dataset
+**Step 4: Fine-tune Later Layers**
+- Later layers: Task-specific high-level features
+- Train on FaceForensics++ dataset
+- Learn to detect deepfake artifacts
 
-5. **Data Augmentation**
-   - Random rotation, flips, crops
-   - JPEG compression simulation
-   - Color jittering
+**Step 5: Data Augmentation**
+- Random crops, flips, rotations
+- JPEG compression simulation
+- Color jittering
+- Helps model generalize better
 
-**Training Details:**
-- Dataset: FaceForensics++ (5,000 videos, 4 manipulation types)
-- Manipulation types: DeepFakes, Face2Face, FaceSwap, NeuralTextures
+**Dataset: FaceForensics++**
+- 5,000 videos (1,000 real + 4,000 fake)
+- 4 manipulation types: DeepFakes, Face2Face, FaceSwap, NeuralTextures
 - Training time: 2-4 hours on GPU
-- Achieves 94-95% accuracy
-- Only 5,000 videos needed (vs 100,000+ from scratch)
+- Much faster than training from scratch (which needs 100,000+ videos)
 
 ---
 
 ## Slide 12: LoRA - Low-Rank Adaptation
 
-### Parameter-Efficient Fine-Tuning
+### The Model Compression Problem
 
-**The Problem:**
-- Full fine-tuning: Update all 5.3M parameters
-- Model size: 20 MB per task-specific model
-- Deploying multiple models (different scenarios) = impractical
-- Edge devices: Limited memory and storage
+**The Challenge:**
+- EfficientNet-B0: 5.3M parameters
+- Full model size: 20 MB
+- Fine-tuning updates ALL parameters
+- Problem: Want to deploy on edge devices (phones, embedded systems)
 
-**LoRA Solution:**
-- Freeze pre-trained weights W₀
-- Inject trainable low-rank matrices B and A
-- Update: W = W₀ + ΔW = W₀ + BA
+**Traditional Solutions:**
+- Pruning: Remove unimportant weights (complex, can hurt accuracy)
+- Quantization: Use lower precision (INT8 instead of FP32)
+- Knowledge distillation: Train smaller student model (time-consuming)
 
-**Mathematical Formulation:**
+**LoRA's Clever Solution:**
+- Don't update original weights W₀ at all (freeze them)
+- Add small trainable matrices B and A
+- New weights: W = W₀ + BA
+
+**Mathematical Idea:**
 ```
-W₀ ∈ ℝ^(d×k)  (frozen pre-trained weights)
-B ∈ ℝ^(d×r)   (trainable)
-A ∈ ℝ^(r×k)   (trainable)
-r ≪ min(d,k)  (rank, typically r=8)
+Original: W₀ ∈ ℝ^(d×k)  (e.g., 1280×1280 = 1,638,400 params)
 
-Forward pass: h = W₀x + BAx
+LoRA decomposition:
+B ∈ ℝ^(d×r)  (e.g., 1280×8)
+A ∈ ℝ^(r×k)  (e.g., 8×1280)
+r ≪ min(d,k)  (rank = 8, much smaller!)
+
+Total LoRA params: r×(d+k) = 8×(1280+1280) = 20,480
+Reduction: 1,638,400 / 20,480 = 80× smaller!
 ```
 
-**Parameter Reduction Example:**
-- Original layer: d=1280, k=1280 → 1,638,400 parameters
-- LoRA with r=8: 8×(1280+1280) = 20,480 parameters
-- **Reduction: 80× for single layer**
-
-**Full Model Reduction:**
-- EfficientNet-B0: 5.3M parameters → 150K trainable (LoRA)
-- Model size: 20 MB → 3.5 MB
-- **Overall reduction: 35×**
-- Accuracy drop: <1% (94.5% → 93.5%)
+**Key Insight:**
+- Most weight updates during fine-tuning are "low-rank"
+- Don't need full matrix, just a small correction
+- BA captures this correction efficiently
 
 ---
 
-## Slide 13: LoRA Benefits & Training
+## Slide 13: LoRA Benefits & Results
 
-### Why LoRA is Game-Changing
+### Why LoRA is Powerful
+
+**Compression Results:**
+- Original EfficientNet-B0: 5.3M parameters → 20 MB
+- With LoRA (rank=8): 150K trainable parameters → 3.5 MB
+- **Compression ratio: 35× smaller**
+- **Accuracy drop: <1%** (94.5% → 93.5%)
 
 **Key Benefits:**
 
-1. **Edge Deployment**
-   - 3.5 MB model fits in mobile device memory
-   - On-device inference without cloud connectivity
-   - Privacy-preserving (data stays local)
+**1. Edge Deployment**
+- 3.5 MB fits easily in mobile/embedded devices
+- Can run on-device without internet
+- Privacy: Data never leaves device
 
-2. **Multi-Task Adaptation**
-   - Different adapters for different scenarios:
-     - Indoor lighting adapter (3.5 MB)
-     - Outdoor lighting adapter (3.5 MB)
-     - Different camera types (3.5 MB each)
-   - Switch adapters by loading 3.5 MB (not 20 MB)
+**2. Multiple Adapters**
+- Base model (20 MB) loaded once
+- Different adapters for different scenarios:
+  - Indoor lighting: +3.5 MB
+  - Outdoor lighting: +3.5 MB
+  - Different camera: +3.5 MB
+- Switch adapters instantly
 
-3. **Faster Training**
-   - Train 150K parameters (not 5.3M)
-   - 60-70% reduction in training time
-   - 40-50% reduction in memory requirements
+**3. Faster Training**
+- Train only 150K params (not 5.3M)
+- 60-70% faster training
+- 40-50% less memory needed
+- Can train on smaller GPUs
 
-4. **Accuracy Preservation**
-   - LoRA achieves 98.5% of full fine-tuning accuracy
-   - 1% accuracy drop for 35× compression
-   - Excellent trade-off for deployment
+**4. Easy Updates**
+- Update just the 3.5 MB adapter
+- Don't retrain entire 20 MB model
+- Quick iteration and improvement
 
-**LoRA Training Strategy:**
+**Training Process:**
 ```
-1. Load ImageNet pre-trained EfficientNet-B0
-2. Freeze all pre-trained weights W₀
-3. Inject LoRA layers (B, A matrices) with rank r=8
-4. Initialize: A ~ Gaussian(0, σ²), B = 0 (ensures BA=0 initially)
-5. Train on FaceForensics++ for 15 epochs
-6. Learning rate: 3×10⁻⁴ (higher than full fine-tuning)
-7. Save only LoRA parameters (3.5 MB)
+1. Load pre-trained EfficientNet-B0
+2. Freeze all original weights W₀
+3. Add LoRA layers (B, A) with rank r=8
+4. Initialize: A randomly, B=0 (so BA=0 at start)
+5. Train on dataset for 15 epochs
+6. Save only B and A matrices (3.5 MB)
 ```
 
 **Inference:**
-- Compute: h = W₀x + BAx
-- Additional computation: Negligible (0.39B + 0.02B = 0.41B FLOPs)
+- Compute: output = W₀ × input + B × A × input
+- Extra computation: Minimal (0.02B FLOPs added to 0.39B)
+- Speed: Nearly identical to original model
 
 ---
 
-## Slide 14: Complete System Performance
+## Slide 14: Summary of Key Models
 
-### Expected Results & Benchmarks
+### Three Pillars of Our System
 
-**Performance Targets:**
+**1. RetinaFace (Face Detection)**
+- **Purpose**: Detect and locate faces with 5 landmarks
+- **Accuracy**: 97% on WIDER FACE benchmark
+- **Speed**: 20-30ms per frame
+- **Advantage**: Best accuracy + landmarks + reasonable speed
+- **Status**: Pre-trained model available (no training needed)
 
-| Component | Metric | Target | Excellent |
-|-----------|--------|--------|-----------|
-| **Anti-Spoofing** | Accuracy | >95% | >98% |
-| | APCER (False Accept) | <2% | <0.5% |
-| | BPCER (False Reject) | <3% | <1% |
-| **Deepfake Detection** | Accuracy | >93% | >96% |
-| | AUC | >0.95 | >0.98 |
-| **Face Verification** | Accuracy (LFW) | >99% | 99.83% |
-| | FAR @ 0.1% FRR | <0.01% | - |
-| **System Performance** | End-to-end FPS | >15 | >25 |
-| | Latency | <200ms | <150ms |
-| | Memory Usage | <2 GB | <1.5 GB |
+**2. EfficientNet-B0 (Deepfake Detection)**
+- **Purpose**: Classify faces as real or AI-generated
+- **Innovation**: Compound scaling (depth + width + resolution)
+- **Efficiency**: 5.3M params, 0.39B FLOPs
+- **Advantage**: 5× smaller than ResNet-50, better accuracy
+- **Status**: Will fine-tune on FaceForensics++ dataset
 
-**Comparison with Existing Methods:**
+**3. LoRA (Model Compression)**
+- **Purpose**: Reduce model size for edge deployment
+- **Method**: Low-rank weight decomposition (W = W₀ + BA)
+- **Compression**: 20 MB → 3.5 MB (35× reduction)
+- **Advantage**: <1% accuracy loss, 60% faster training
+- **Status**: Will apply to EfficientNet after traini|
 
-| Method | Accuracy | FAR | Speed | Cost |
-|--------|----------|-----|-------|------|
-| Single Camera + CNN | 92% | 3.5% | 30 FPS | ₹1,500 |
-| Depth Sensor System | 98% | 0.5% | 15 FPS | ₹15,000 |
-| **Our Dual-Camera** | **>95%** | **<2%** | **>20 FPS** | **₹3,000** |
-
-**Key Achievements:**
-- Approaching depth sensor accuracy at 1/5 the cost
-- Real-time performance on standard hardware (no GPU needed)
-- Unified system handling all attack types
-- Deployable on edge devices (3.5 MB LoRA model)
+| **Our ese Three?**
+- RetinaFace: Industry standard for face detection
+- EfficientNet: Best efficiency for real-time processing
+- LoRA: Enables deployment on resource-constrained devices
 
 ---
 
-## Slide 15: Conclusion & Future Work
+## Slide 15: Conclusion & Next Steps
 
-### Summary & Next Steps
+### Project Status & Future Work
 
-**Project Contributions:**
+**What We've Accomplished:**
+1. ✅ Comprehensive literature review
+2. ✅ System architecture design
+3. ✅ Model selection with justification:
+   RetinaFace for face detection
+   - EfficientNet-B0 for deepfake detection
+   - LoRA for model compression
+4. ✅ Dataset identification (~8 GB total)
+5. ✅ Implementation roadmap (12 weeks)
 
-1. **Hardware-Software Co-Design**
-   - Stereo vision using commodity webcams (₹3,000)
-   - Achieves depth sensor capability at 1/5 cost
+**Next Steps (Implementation Phase):**
 
-2. **Multi-Modal Security**
-   - Depth + Texture + Deep Learning
-   - Defense-in-depth against all attack types
+**Immediate (Weeks 1-2):**
+- Procure hardware: 2× Logitech C270 webcams (₹3,000)
+- Build rnaid mounting bracket (6-10 cm baseline)
+- Perform stereo camera calibration
 
-3. **State-of-the-Art Components**
-   - RetinaFace (97% detection accuracy)
-   - EfficientNet-B0 (optimal efficiency)
-   - LoRA (35× compression, <1% accuracy loss)
+**Short-term (Weeks 3-5):**
+- Implement stereo depth computation (SGBM)
+- Integrate RetinaFace for f CPUdetection
+- Test depth-based liveness detection
 
-4. **Practical Deployment**
-   - Real-time: 15-30 FPS on CPU
-   - Edge-ready: 3.5 MB model
-   - Open-source implementation
+**Medium-term (Weeks 6-9):**
+- Train EfficientNet-B0 on FaceForensics++ (2-4 hours)
+- Apply LoRA compression
+- Integrate all components into pipeline
 
-**Implementation Timeline:**
-- 12 weeks from hardware setup to completion
-- Only 2 models need training (3-5 hours total)
-- Datasets: ~8 GB (Replay-Attack + FaceForensics++ + LFW)
+**Long-term (Weeks 10-12):**
+- System testing and optimizati
+rformance benchmarking
+- Documentation and presentation
 
-**Future Enhancements:**
-
-**Short-term (3-6 months):**
-- 3D mask detection using depth distribution analysis
-- Continuous authentication throughout user sessions
-- Multi-user parallel verification
-
-**Medium-term (6-12 months):**
-- Federated learning for privacy-preserving updates
-- Adversarial robustness improvements
-- Cross-dataset generalization for deepfakes
-
-**Long-term (1-2 years):**
-- Vision Transformers for improved accuracy
-- Neural Architecture Search for optimal design
-- Multimodal fusion (face + voice + gait)
-
-**Applications:**
-- Access control systems
-- Mobile device authentication
-- Banking and financial services
-- IoT security
-- Border control and airports
+**Expected Outcomes:**
+- Cost-effective system (₹3,000 vs ₹15,000 depth sensors)
+- Real-time performance (15-30 FPS on CPU)
+- Deployable model (3.5 MB with LoRA)
+- Open-source implementation for future research
 
 ---
 

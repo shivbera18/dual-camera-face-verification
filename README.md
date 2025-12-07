@@ -165,6 +165,15 @@ Implements research from:
 
 ---
 
+## 📊 Presentation
+
+**15-slide presentation content** available in [Presentation/](Presentation/) folder:
+- Introduction and problem statement
+- RetinaFace, EfficientNet-B0, and LoRA explained
+- Ready for PowerPoint/Google Slides
+
+---
+
 ## 📝 License
 
 MIT License - See [LICENSE](LICENSE)
