@@ -1,5 +1,5 @@
 # Dual-Camera Face Verification System
-## Presentation Content (15 Slides)
+## Presentation Content (16 Slides)
 
 ---
 
@@ -281,7 +281,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 11: EfficientNet Training Strategy
+## Slide 12: EfficientNet Training Strategy
 
 ### Transfer Learning Approach
 
@@ -322,7 +322,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 12: LoRA - Low-Rank Adaptation
+## Slide 13: LoRA - Low-Rank Adaptation
 
 ### The Model Compression Problem
 
@@ -362,7 +362,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 13: LoRA Benefits & Results
+## Slide 14: LoRA Benefits & Results
 
 ### Why LoRA is Powerful
 
@@ -415,7 +415,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 14: Summary of Key Models
+## Slide 15: Summary of Key Models
 
 ### Three Pillars of Our System
 
@@ -447,7 +447,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 15: Conclusion & Next Steps
+## Slide 16: Conclusion & Next Steps
 
 ### Project Status & Future Work
 
