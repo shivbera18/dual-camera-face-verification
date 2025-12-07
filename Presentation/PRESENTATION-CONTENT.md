@@ -1,5 +1,5 @@
 # Dual-Camera Face Verification System
-## Presentation Content (16 Slides)
+## Presentation Content (17 Slides)
 
 ---
 
@@ -116,7 +116,54 @@ Siamese networks were important historically but have been superseded by better 
 
 ---
 
-## Slide 6: Our Proposed Solution
+## Slide 6: Why NOT Siamese Networks?
+
+### Critical Limitations for Our Use Case
+
+**What We Need:**
+- Real-time face verification (15-30 FPS)
+- High accuracy (>99%)
+- Easy deployment with pre-trained models
+- Efficient training if needed
+
+**Why Siamese Networks Don't Work:**
+
+**1. Training Complexity**
+- Requires pair/triplet generation (millions of pairs)
+- Hard negative mining needed (computationally expensive)
+- Slow convergence (100+ epochs typical)
+- Unstable training (sensitive to hyperparameters)
+
+**2. Lower Accuracy**
+- Best Siamese: 97-98% on LFW
+- Modern methods: 99.83% on LFW
+- **2% accuracy gap = 200 more errors per 10,000 faces**
+
+**3. Deployment Issues**
+- No good pre-trained models available
+- Would need to train from scratch
+- Requires large dataset (millions of face pairs)
+- Time-consuming: Weeks of training
+
+**4. Outdated Architecture**
+- Published in 2015 (9 years old)
+- Superseded by better methods
+- Not used in modern production systems
+- No active development/support
+
+**What We're Using Instead:**
+- **ArcFace** for face verification
+  - Pre-trained on millions of faces
+  - 99.83% accuracy (industry standard)
+  - Ready to use (no training needed)
+  - Used by Apple, Alibaba, Tencent
+
+**The Bottom Line:**
+Siamese networks were important historically, but using them today would be like using a 2015 smartphone when 2024 models are available - technically possible but not practical.
+
+---
+
+## Slide 7: Our Proposed Solution
 
 ### Dual-Camera Stereo Vision Approach
 
@@ -140,7 +187,7 @@ Siamese networks were important historically but have been superseded by better 
 
 ---
 
-## Slide 7: Project Scope & Current Progress
+## Slide 8: Project Scope & Current Progress
 
 ### What We're Implementing
 
@@ -163,7 +210,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 8: RetinaFace - Face Detection (Part 1)
+## Slide 9: RetinaFace - Face Detection (Part 1)
 
 ### What is RetinaFace?
 
@@ -187,7 +234,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 9: RetinaFace - Performance Comparison (Part 2)
+## Slide 10: RetinaFace - Performance Comparison (Part 2)
 
 ### Why RetinaFace is the Best Choice
 
@@ -214,7 +261,7 @@ Focus on the three key models we'll be using
 
 ---
 
-## Slide 10: EfficientNet-B0 - Deepfake Detection (Part 1)
+## Slide 11: EfficientNet-B0 - Deepfake Detection (Part 1)
 
 ### The Compound Scaling Innovation
 
@@ -249,7 +296,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 11: EfficientNet-B0 - Efficiency Comparison (Part 2)
+## Slide 12: EfficientNet-B0 - Efficiency Comparison (Part 2)
 
 ### Best Accuracy-Efficiency Trade-off
 
@@ -281,7 +328,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 12: EfficientNet Training Strategy
+## Slide 13: EfficientNet Training Strategy
 
 ### Transfer Learning Approach
 
@@ -322,7 +369,7 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 13: LoRA - Low-Rank Adaptation
+## Slide 14: LoRA - Low-Rank Adaptation
 
 ### The Model Compression Problem
 
@@ -362,7 +409,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 14: LoRA Benefits & Results
+## Slide 15: LoRA Benefits & Results
 
 ### Why LoRA is Powerful
 
@@ -415,7 +462,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 15: Summary of Key Models
+## Slide 16: Summary of Key Models
 
 ### Three Pillars of Our System
 
@@ -447,7 +494,7 @@ Reduction: 1,638,400 / 20,480 = 80× smaller!
 
 ---
 
-## Slide 16: Conclusion & Next Steps
+## Slide 17: Conclusion & Next Steps
 
 ### Project Status & Future Work
 
