@@ -25,6 +25,7 @@ A BTech final year project implementing a complete face verification system with
 
 | Document | Purpose | Read Time |
 |----------|---------|-----------|
+| **[PROJECT-REFERENCE-GUIDE.md](docs/PROJECT-REFERENCE-GUIDE.md)** ⭐ | Simple step-by-step with papers & datasets for each part | 15 min |
 | **[PROJECT-OVERVIEW.md](docs/PROJECT-OVERVIEW.md)** | Complete system pipeline, all models, datasets, timeline | 30-45 min |
 | **[LEARNING-ROADMAP.md](docs/LEARNING-ROADMAP.md)** | Learn from basics to implementation (3-4 months) | 20-30 min |
 | **[technical-specification.md](docs/technical-specification.md)** | Detailed implementation guide with code examples | 2-3 hours |
@@ -34,6 +35,7 @@ A BTech final year project implementing a complete face verification system with
 
 ### 🚀 Quick Navigation
 
+**Want simple step-by-step?** → Read [PROJECT-REFERENCE-GUIDE.md](docs/PROJECT-REFERENCE-GUIDE.md) ⭐  
 **New to the project?** → Read [PROJECT-OVERVIEW.md](docs/PROJECT-OVERVIEW.md)  
 **Need to learn basics?** → Follow [LEARNING-ROADMAP.md](docs/LEARNING-ROADMAP.md)  
 **Ready to implement?** → Use [technical-specification.md](docs/technical-specification.md)  
