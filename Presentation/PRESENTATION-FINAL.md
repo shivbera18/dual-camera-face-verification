@@ -11,8 +11,8 @@
 **Shivratan Bera** (2022BECE103)  
 Electronics and Communication Engineering  
 National Institute of Technology, Srinagar  
-**Guide:** Dr. Gausia Qazi  
-December 2024
+**Guide:** Prof. A A Mir  
+December 2025
 
 ---
 
