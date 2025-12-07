@@ -43,25 +43,28 @@
 ---
 
 ## Slide 4: Existing Solutions
-**📊 IMAGE NEEDED: Accuracy vs cost bar chart**
+**📊 IMAGE NEEDED: Comparison table with pros/cons**
 
 **What to show:**
-- X-axis: Methods (Depth Sensors, Texture-Based, CNN, Deepfake Detectors)
-- Y-axis 1 (left): Accuracy (%)
-- Y-axis 2 (right): Cost (₹)
-- Two bar series: Blue for accuracy, Orange for cost
+- Table with 4 methods
+- Each method has: Name, Pros (✅), Cons (❌)
+- Visual: Green checkmarks, Red crosses
 
-**Data:**
+**Create using:** PowerPoint table with icons
+
+**Layout:**
 ```
-Depth Sensors: 98%, ₹15,000
-Texture-Based: 87%, ₹500
-CNN Anti-Spoofing: 93%, ₹5,000
-Deepfake Detectors: 92%, ₹5,000
+┌─────────────────┬──────────────────┬──────────────────┐
+│ Method          │ Advantages       │ Limitations      │
+├─────────────────┼──────────────────┼──────────────────┤
+│ Depth Sensors   │ ✅ 98% accuracy  │ ❌ Expensive     │
+│ Texture-Based   │ ✅ Fast          │ ❌ 85-90% only   │
+│ CNN Anti-Spoof  │ ✅ 92-95%        │ ❌ No generalize │
+│ Deepfake Detect │ ✅ 90-95%        │ ❌ 70-80% unseen │
+└─────────────────┴──────────────────┴──────────────────┘
 ```
 
-**Create using:** Excel, Python (matplotlib), or PowerPoint
-
-**Size:** 1200×800 pixels
+**Size:** 1400×600 pixels
 
 ---
 
@@ -225,59 +228,34 @@ plt.savefig('efficientnet_comparison.png', dpi=300)
 
 ---
 
-## Slide 9: Training Strategy
+## Slide 9: Dataset & Evaluation
 
-### IMAGE 1: Training Pipeline
-**📊 IMAGE NEEDED: Transfer learning flowchart**
-
-**What to show:**
-```
-[ImageNet Pre-trained EfficientNet-B0]
-              ↓
-    [Remove 1000-class head]
-              ↓
-    [Add Binary Classifier]
-              ↓
-      [Freeze Early Layers]
-              ↓
-     [Fine-tune Later Layers]
-              ↓
-    [Train on FaceForensics++]
-```
-
-**Create using:** PowerPoint or Draw.io
-
-**Colors:**
-- Pre-trained: Blue
-- Modifications: Orange
-- Training: Green
-
-**Size:** 1000×800 pixels
-
----
-
-### IMAGE 2: Real vs Fake Examples
-**📊 IMAGE NEEDED: FaceForensics++ dataset examples**
+**📊 IMAGE NEEDED: FaceForensics++ manipulation types**
 
 **Source:**
 - FaceForensics++ paper: https://arxiv.org/pdf/1901.08971.pdf
 - **Page 3, Figure 2** (Real and manipulated faces)
-- Shows 4 manipulation types
+- **Page 5, Figure 4** (Manipulation examples)
 
-**What it shows:**
-- Original (real) face
-- DeepFakes version
-- Face2Face version
-- FaceSwap version
-- NeuralTextures version
+**What to show:**
+- Grid layout: 2×2 or 1×4
+- Each manipulation type with label:
+  1. DeepFakes (face swapping)
+  2. Face2Face (expression transfer)
+  3. FaceSwap (different algorithm)
+  4. NeuralTextures (texture synthesis)
 
-**Layout:** 5 images in a row (1 real + 4 fakes)
+**Layout:** 4 images with clear labels
 
-**Size:** 1920×400 pixels
+**Size:** 1920×600 pixels
 
 **Alternative source:**
 - GitHub: https://github.com/ondyari/FaceForensics
 - Example images in README
+
+**Create:** Can also create comparison grid showing:
+- Top row: Original faces
+- Bottom row: Manipulated versions
 
 ---
 
@@ -378,9 +356,8 @@ plt.savefig('lora_compression.png', dpi=300, bbox_inches='tight')
 
 ✅ **Slide 2:** Real-world applications collage (Google Images)
 ✅ **Slide 3:** Attack examples collage
-✅ **Slide 4:** Accuracy vs cost bar chart (Excel/Python)
+✅ **Slide 4:** Pros/cons comparison table (PowerPoint)
 ✅ **Slide 5:** System architecture flowchart (Draw.io)
-✅ **Slide 9:** Training pipeline flowchart (PowerPoint)
 ✅ **Slide 11:** Model size comparison bar chart (Python)
 
 ---
@@ -438,10 +415,10 @@ Save images as:
 
 ---
 
-## Total Images Needed: 13
+## Total Images Needed: 12
 
 **From papers:** 6 images
-**From GitHub:** 2 images
+**From GitHub:** 1 image
 **Create yourself:** 5 images
 
 **Estimated time:** 2-3 hours to collect and create all images

@@ -56,16 +56,29 @@ December 2024
 
 ## Slide 4: Existing Solutions
 
-| Approach | Accuracy | Cost | Limitation |
-|----------|----------|------|------------|
-| Depth Sensors | >98% | ₹15,000+ | Expensive |
-| Texture-Based | 85-90% | Low | Poor accuracy |
-| CNN Anti-Spoofing | 92-95% | Medium | No generalization |
-| Deepfake Detectors | 90-95% | Medium | 70-80% unseen |
+### Anti-Spoofing Methods
 
-**Problem:** Cost vs accuracy trade-off
+**Depth Sensors (Intel RealSense, ToF)**
+- ✅ High accuracy (>98%)
+- ❌ Expensive hardware (₹15,000+)
+- ❌ Not in consumer devices
 
-**📊 IMAGE: Accuracy vs cost bar chart**
+**Texture-Based (LBP + SVM)**
+- ✅ Fast, lightweight
+- ❌ Low accuracy (85-90%)
+- ❌ Fails on high-quality prints
+
+**CNN-Based Anti-Spoofing**
+- ✅ Better accuracy (92-95%)
+- ❌ Poor generalization to new attacks
+- ❌ Requires large labeled datasets
+
+**Deepfake Detectors (XceptionNet)**
+- ✅ Good on known methods (90-95%)
+- ❌ Drops to 70-80% on unseen methods
+- ❌ Adversarial arms race
+
+**📊 IMAGE: Comparison table with checkmarks/crosses**
 
 ---
 
@@ -137,21 +150,30 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 9: Training Strategy
+## Slide 9: Dataset & Evaluation
 
-### Transfer Learning
+### FaceForensics++
 
-**Pipeline:**
-1. ImageNet pre-trained EfficientNet-B0
-2. Replace: 1000-class → Binary (Real/Fake)
-3. Freeze early layers
-4. Fine-tune later layers
-5. Data augmentation
+**Dataset Composition:**
+- 1,000 real videos
+- 4,000 manipulated videos
+- 4 manipulation types:
+  - DeepFakes (face swapping)
+  - Face2Face (expression transfer)
+  - FaceSwap (different algorithm)
+  - NeuralTextures (texture synthesis)
 
-**Dataset:** FaceForensics++ (5K videos, 2-4 hrs training)
+**Why This Dataset:**
+- Multiple manipulation methods
+- High-quality (c23 compression)
+- Standard benchmark (1000+ citations)
 
-**📊 IMAGE: Training pipeline**
-**📊 IMAGE: Real vs fake examples**
+**Evaluation Metrics:**
+- Accuracy, Precision, Recall
+- AUC-ROC curve
+- Cross-dataset generalization
+
+**📊 IMAGE: 4 manipulation types examples**
 
 ---
 
