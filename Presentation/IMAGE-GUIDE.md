@@ -228,34 +228,54 @@ plt.savefig('efficientnet_comparison.png', dpi=300)
 
 ---
 
-## Slide 9: Dataset & Evaluation
+## Slide 9: Model Selection Rationale
 
-**📊 IMAGE NEEDED: FaceForensics++ manipulation types**
-
-**Source:**
-- FaceForensics++ paper: https://arxiv.org/pdf/1901.08971.pdf
-- **Page 3, Figure 2** (Real and manipulated faces)
-- **Page 5, Figure 4** (Manipulation examples)
+**📊 IMAGE NEEDED: Decision matrix or comparison summary**
 
 **What to show:**
-- Grid layout: 2×2 or 1×4
-- Each manipulation type with label:
-  1. DeepFakes (face swapping)
-  2. Face2Face (expression transfer)
-  3. FaceSwap (different algorithm)
-  4. NeuralTextures (texture synthesis)
+- Visual showing your selection process
+- 3 sections: RetinaFace, EfficientNet-B0, LoRA
 
-**Layout:** 4 images with clear labels
+**Option 1: Comparison Matrix**
+```
+┌─────────────────┬──────────────┬──────────────┬──────────────┐
+│                 │ Accuracy     │ Speed        │ Selected?    │
+├─────────────────┼──────────────┼──────────────┼──────────────┤
+│ MTCNN           │ 92-94%       │ 50-80ms      │ ❌           │
+│ RetinaFace      │ 97%          │ 20-30ms      │ ✅           │
+├─────────────────┼──────────────┼──────────────┼──────────────┤
+│ ResNet-50       │ 76%          │ 25.6M params │ ❌           │
+│ EfficientNet-B0 │ 77.1%        │ 5.3M params  │ ✅           │
+├─────────────────┼──────────────┼──────────────┼──────────────┤
+│ Full Model      │ 94.5%        │ 20 MB        │ ❌           │
+│ LoRA            │ 93.5%        │ 3.5 MB       │ ✅           │
+└─────────────────┴──────────────┴──────────────┴──────────────┘
+```
 
-**Size:** 1920×600 pixels
+**Option 2: Decision Tree**
+```
+Face Detection Needed
+    ↓
+Compare: MTCNN vs RetinaFace vs YOLO
+    ↓
+RetinaFace (97% + fast + landmarks)
+    
+Deepfake Detection Needed
+    ↓
+Compare: ResNet vs EfficientNet vs MobileNet
+    ↓
+EfficientNet-B0 (best efficiency)
+    
+Edge Deployment Needed
+    ↓
+Compare: Full model vs LoRA
+    ↓
+LoRA (35× smaller)
+```
 
-**Alternative source:**
-- GitHub: https://github.com/ondyari/FaceForensics
-- Example images in README
+**Create using:** PowerPoint or Draw.io
 
-**Create:** Can also create comparison grid showing:
-- Top row: Original faces
-- Bottom row: Manipulated versions
+**Size:** 1400×800 pixels
 
 ---
 

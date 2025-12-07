@@ -150,30 +150,27 @@ Constraint: α × β² × γ² ≈ 2
 
 ---
 
-## Slide 9: Dataset & Evaluation
+## Slide 9: Model Selection Rationale
 
-### FaceForensics++
+### Why These Specific Models?
 
-**Dataset Composition:**
-- 1,000 real videos
-- 4,000 manipulated videos
-- 4 manipulation types:
-  - DeepFakes (face swapping)
-  - Face2Face (expression transfer)
-  - FaceSwap (different algorithm)
-  - NeuralTextures (texture synthesis)
+**RetinaFace Selection:**
+- Compared: MTCNN, YOLO-Face, Haar Cascades
+- Winner: 97% accuracy + 3× faster than MTCNN
+- Provides 5 landmarks (essential for alignment)
 
-**Why This Dataset:**
-- Multiple manipulation methods
-- High-quality (c23 compression)
-- Standard benchmark (1000+ citations)
+**EfficientNet-B0 Selection:**
+- Compared: ResNet-50, XceptionNet, MobileNetV2
+- Winner: Best accuracy-efficiency trade-off
+- 5× fewer parameters, 10× fewer FLOPs
+- CPU inference capable
 
-**Evaluation Metrics:**
-- Accuracy, Precision, Recall
-- AUC-ROC curve
-- Cross-dataset generalization
+**LoRA Selection:**
+- Problem: 20 MB model too large for edge
+- Solution: 35× compression with <1% accuracy loss
+- Enables deployment on resource-constrained devices
 
-**📊 IMAGE: 4 manipulation types examples**
+**📊 IMAGE: Decision tree or comparison matrix**
 
 ---
 
