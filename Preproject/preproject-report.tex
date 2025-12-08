@@ -14,27 +14,68 @@
 % Cover Page
 \begin{titlepage}
 \centering
-\vspace*{2cm}
+
+% College logo
+\includegraphics[width=0.3\linewidth]{nit-logo.png}
+
+\vspace{1cm}
+{\Large\bfseries National Institute of Technology, Srinagar\par}
+{\large Department of Electronics and Communication\par}
+
+\vspace{2cm}
 {\Huge\bfseries Dual-Camera Face Verification System with Stereo Vision-Based Liveness Detection and Deepfake Prevention\par}
+
 \vspace{2cm}
 {\Large Pre-Project Report\par}
-\vspace{1.5cm}
+
+\vspace{2cm}
+{\large \textbf{Submitted by:}\par}
+\vspace{0.5cm}
 {\large SHIVRATAN BERA\par}
 {\large Enrollment Number: 2022BECE103\par}
-{\large Department of Electronics and Communication\par}
-{\large National Institute of Technology, Srinagar\par}
-\vspace{1.5cm}
+\vspace{0.3cm}
+{\large ARSALAN BASHIR\par}
+{\large Enrollment Number: 2022BECE057\par}
 
-% Add your college logo here
-% \includegraphics[width=0.5\linewidth]{nit-logo.png}
+\vspace{1.5cm}
+{\large \textbf{Project Guide:}\par}
+{\large Professor A. A. Mir\par}
 
 \vfill
-{\large Submitted to: Dr. Gausia Qazi\par}
-{\large Date: December 2024\par}
+{\large December 2024\par}
 \end{titlepage}
+
+% Acknowledgement Page
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{Acknowledgement}
+
+We would like to express our sincere gratitude to all those who have contributed to the successful completion of this pre-project report.
+
+First and foremost, we extend our deepest appreciation to our project guide, \textbf{Professor A. A. Mir}, for his invaluable guidance, continuous support, and insightful feedback throughout the research phase. His expertise and encouragement have been instrumental in shaping this work.
+
+We are grateful to the \textbf{Department of Electronics and Communication, National Institute of Technology, Srinagar}, for providing us with the necessary resources and academic environment to pursue this research.
+
+We would like to thank the authors of the research papers and open-source implementations that formed the foundation of our literature review, particularly the work on RetinaFace, EfficientNet, and Low-Rank Adaptation (LoRA).
+
+Finally, we acknowledge our families and friends for their unwavering support and encouragement throughout this endeavor.
+
+\vspace{1cm}
+\begin{flushright}
+\textbf{Shivratan Bera}\\
+\textbf{Arsalan Bashir}\\
+December 2024
+\end{flushright}
+
+\newpage
 
 \pagenumbering{roman}
 \tableofcontents
+
+\newpage
+\listoffigures
+
+\newpage
+\listoftables
 
 \newpage
 \pagenumbering{arabic}
@@ -513,13 +554,6 @@ For the entire EfficientNet-B0 with 5.3M parameters, applying LoRA with $r=8$ to
 
 \textbf{Accuracy preservation}: Empirical results show LoRA with $r=8$ achieves 98.5\% of full fine-tuning accuracy. For our deepfake detector, this translates to 93.5\% accuracy (LoRA) versus 94.5\% (full fine-tuning)—a 1\% drop for 35× parameter reduction.
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.8\textwidth]{LoRA.png}
-\caption{LoRA architecture showing low-rank decomposition matrices injected into pre-trained model layers}
-\label{fig:lora-architecture}
-\end{figure}
-
 \subsection{Training Strategy with LoRA}
 
 \begin{enumerate}
@@ -534,133 +568,51 @@ For the entire EfficientNet-B0 with 5.3M parameters, applying LoRA with $r=8$ to
 
 At inference, the adapted model computes $h = W_0 x + BAx$ efficiently—the additional computation is negligible (0.39B + 0.02B = 0.41B FLOPs).
 
-% Chapter 5: Implementation and Evaluation
-\chapter{Implementation and Evaluation}
+% Chapter 5: Research Progress and Datasets
+\chapter{Research Progress and Datasets}
 
-\section{Datasets and Training Strategy}
+\section{Current Research Status}
+
+This pre-project phase has focused on comprehensive literature review and comparative analysis of face detection and deepfake detection architectures. The research has covered RetinaFace for multi-scale face detection, EfficientNet-B0 for efficient deepfake detection, and Low-Rank Adaptation (LoRA) for parameter-efficient model compression.
+
+\subsection{RetinaFace Analysis}
+
+Comparative analysis of RetinaFace versus MTCNN demonstrates RetinaFace's superior accuracy (97\% vs 92-94\% on WIDER FACE) and faster inference (20-30ms vs 50-80ms per image). RetinaFace's Feature Pyramid Network backbone enables multi-scale detection while providing five facial landmarks essential for face alignment.
+
+\subsection{EfficientNet-B0 Analysis}
+
+Comparative study of EfficientNet-B0 against XceptionNet and ResNet-50 reveals optimal accuracy-efficiency trade-off. EfficientNet-B0 achieves 94-95\% deepfake detection accuracy with only 5.3M parameters and 0.39B FLOPs, compared to XceptionNet's 23M parameters and 8.4B FLOPs. The compound scaling principle enables this efficiency through balanced scaling of network depth, width, and resolution.
+
+\subsection{LoRA Exploration}
+
+Analysis of Low-Rank Adaptation demonstrates 35× parameter reduction (from 5.3M to 150K trainable parameters) with <1\% accuracy degradation. For rank $r=8$, LoRA reduces model size from 20MB to 3.5MB, enabling edge deployment while preserving 98.5\% of full fine-tuning accuracy.
+
+\section{Datasets Identified}
 
 \subsection{Replay-Attack Dataset}
 
-Used for training texture-based anti-spoofing (LBP + SVM). Contains 1,300 videos (4 GB) with 50 subjects under controlled and adverse lighting. Attack types include printed photos and video replay on screens. Training uses 360 videos (180 real + 180 attack), with 480 videos reserved for testing.
+Contains 1,300 videos (4 GB) with 50 subjects for anti-spoofing research. Includes printed photo and video replay attacks under controlled and adverse lighting conditions.
 
 \subsection{FaceForensics++ Dataset}
 
-Used for training the EfficientNet-B0 deepfake detector. Contains 5,000 videos (3 GB face crops) with four manipulation types: DeepFakes, Face2Face, FaceSwap, and NeuralTextures. Training employs transfer learning from ImageNet pre-trained weights, fine-tuning on 720 videos per manipulation type for 15 epochs with LoRA adaptation ($r=8$). This achieves 94-95\% accuracy with only 150K trainable parameters.
+Contains 5,000 videos (3 GB face crops) with four manipulation types: DeepFakes, Face2Face, FaceSwap, and NeuralTextures. Suitable for training deepfake detectors with transfer learning from ImageNet pre-trained weights.
 
 \subsection{LFW Dataset}
 
-Used for benchmarking face verification accuracy. Contains 13,233 images across 5,749 subjects with 6,000 evaluation pairs (3,000 matched, 3,000 mismatched). Pre-trained ArcFace models achieve >99\% accuracy on this benchmark without additional training.
+Contains 13,233 images across 5,749 subjects with 6,000 evaluation pairs for face verification benchmarking.
 
-\section{Performance Targets and Evaluation}
-
-The system targets >95\% anti-spoofing accuracy with <2\% Attack Presentation Classification Error Rate (APCER) and <3\% Bona Fide Presentation Classification Error Rate (BPCER). For deepfake detection, the target is >93\% accuracy with >0.95 AUC. Face verification aims for >99\% accuracy on LFW benchmark. System-level performance targets include <200ms end-to-end latency, >15 FPS throughput, and <5 MB model size with LoRA adaptation.
-
-\section{Comparative Analysis}
-
-\begin{table}[h]
-\centering
-\caption{Comparison with State-of-the-Art Methods}
-\begin{tabular}{|l|c|c|c|c|}
-\hline
-\textbf{Method} & \textbf{Accuracy} & \textbf{FAR} & \textbf{Speed} & \textbf{Cost} \\
-\hline
-Single Camera + CNN & 92\% & 3.5\% & 30 FPS & \$50 \\
-Depth Sensor & 98\% & 0.5\% & 15 FPS & \$300 \\
-\textbf{Our Method} & \textbf{>95\%} & \textbf{<2\%} & \textbf{>20 FPS} & \textbf{\$60} \\
-\hline
-\end{tabular}
-\label{tab:comparison}
-\end{table}
-
-The dual-camera approach achieves accuracy approaching depth sensor systems at 1/5 the cost while maintaining superior real-time performance. Evaluation will be conducted on Replay-Attack (480 test videos), FaceForensics++ (560 test videos), and LFW (6,000 pairs) benchmarks. Ablation studies will quantify each component's contribution, with expected findings showing multi-modal fusion (depth + texture) provides 3-5\% accuracy improvement over single modality, while LoRA causes <1\% accuracy drop with 35× model size reduction.
-
-% Chapter 6: Conclusion and Future Work
-\chapter{Conclusion and Future Work}
-
-\section{Summary}
+% Chapter 6: Conclusion
+\chapter{Conclusion}
 
 This pre-project report has presented a comprehensive design for a dual-camera face verification system addressing critical security vulnerabilities in existing single-camera systems. The proposed solution employs stereo vision from two commodity webcams to compute depth information, enabling robust liveness detection without expensive depth sensors.
 
-\textbf{Key innovations}:
+The research phase has focused on comparative analysis of state-of-the-art architectures. RetinaFace demonstrates superior face detection accuracy (97\% on WIDER FACE) with faster inference compared to MTCNN. EfficientNet-B0 provides optimal accuracy-efficiency trade-off for deepfake detection, achieving 94-95\% accuracy with 21× fewer FLOPs than XceptionNet. Low-Rank Adaptation (LoRA) enables 35× model compression with minimal accuracy degradation, facilitating edge deployment.
 
-\begin{itemize}
-\item \textbf{Hardware-software co-design}: Stereo vision using \$60 webcams achieves depth perception equivalent to \$300 sensors
+The proposed system architecture integrates multiple security layers: stereo depth-based liveness detection, texture-based anti-spoofing using Local Binary Patterns, deepfake detection using EfficientNet-B0, and face verification using ArcFace embeddings. This multi-modal approach provides defense-in-depth, where even if one layer is circumvented, others provide protection.
 
-\item \textbf{Multi-modal security}: Combining depth analysis, texture analysis (LBP), and deep learning (EfficientNet-B0) provides defense-in-depth against presentation attacks and deepfakes
+The dual-camera approach offers significant advantages: hardware cost of approximately \$60 compared to \$300 for depth sensors, real-time performance through efficient algorithms, and unified framework addressing both presentation attacks and deepfakes. The system design balances security requirements with practical deployability, making it suitable for access control, mobile authentication, and IoT security applications.
 
-\item \textbf{State-of-the-art components}: RetinaFace for accurate face detection, EfficientNet-B0 for efficient deepfake detection, ArcFace for high-accuracy verification
-
-\item \textbf{Parameter-efficient adaptation}: LoRA enables 35× model compression with <1\% accuracy loss, facilitating edge deployment
-
-\item \textbf{Real-time performance}: 15-30 FPS on standard hardware without GPU acceleration
-\end{itemize}
-
-\textbf{Expected contributions}:
-
-\begin{itemize}
-\item Empirical demonstration that dual-camera stereo vision provides cost-effective alternative to depth sensors for face anti-spoofing
-
-\item Open-source implementation enabling reproducibility and further research
-
-\item Analysis of LoRA's effectiveness for compressing face verification models
-
-\item Practical system suitable for real-world deployment in access control, mobile authentication, and IoT security
-\end{itemize}
-
-\section{Future Enhancements}
-
-\subsection{Short-Term (3-6 months)}
-
-\textbf{3D mask detection}: Current depth analysis detects flat attacks but may be vulnerable to high-quality 3D masks. Future work will analyze depth distribution patterns and texture consistency to detect masks.
-
-\textbf{Continuous authentication}: Extend from single-shot verification to continuous monitoring throughout user sessions, detecting session hijacking attempts.
-
-\textbf{Multi-user scenarios}: Handle multiple faces in frame, performing parallel verification for group authentication scenarios.
-
-\subsection{Medium-Term (6-12 months)}
-
-\textbf{Federated learning}: Enable privacy-preserving model updates by training on decentralized user devices without sharing raw biometric data.
-
-\textbf{Adversarial robustness}: Evaluate and improve robustness against adversarial perturbations designed to fool the system.
-
-\textbf{Cross-dataset generalization}: Improve deepfake detector generalization to unseen manipulation methods through domain adaptation techniques.
-
-\subsection{Long-Term (1-2 years)}
-
-\textbf{Vision Transformers}: Explore replacing CNN backbones with Vision Transformers for improved accuracy and interpretability through attention mechanisms.
-
-\textbf{Neural Architecture Search}: Automatically discover optimal architectures for the specific dual-camera setup and deployment constraints.
-
-\textbf{Multimodal fusion}: Integrate additional modalities (voice, gait, keystroke dynamics) for comprehensive continuous authentication.
-
-\section{Societal Impact and Ethical Considerations}
-
-\textbf{Positive impacts}:
-\begin{itemize}
-\item Enhanced security for financial transactions, reducing fraud
-\item Improved access control for sensitive facilities
-\item Convenient authentication eliminating password burdens
-\item Cost-effective solution enabling widespread deployment
-\end{itemize}
-
-\textbf{Ethical considerations}:
-\begin{itemize}
-\item \textbf{Privacy}: Biometric data is sensitive and permanent. System design must ensure data protection through encryption and local processing where possible.
-
-\item \textbf{Bias and fairness}: Face recognition systems have exhibited demographic disparities. Evaluation must include diverse populations, and mitigation strategies must address any identified biases.
-
-\item \textbf{Consent and transparency}: Users must provide informed consent for biometric data collection. System operation should be transparent, with clear explanations of decisions.
-
-\item \textbf{Security vs. convenience}: Threshold selection must balance security requirements with user experience, avoiding excessive false rejections that frustrate legitimate users.
-\end{itemize}
-
-\section{Conclusion}
-
-The proposed dual-camera face verification system represents a significant advance in biometric security, addressing fundamental limitations of single-camera systems through innovative hardware-software co-design. By combining stereo vision, multi-modal anti-spoofing, state-of-the-art deep learning, and parameter-efficient adaptation, the system achieves high accuracy, real-time performance, and cost-effectiveness suitable for widespread deployment.
-
-The 12-week implementation plan provides a clear roadmap from hardware setup through model training to system integration and evaluation. Expected results demonstrate >95\% attack detection accuracy with <2\% false rejection rate, approaching the performance of expensive depth sensor systems at 1/5 the cost.
-
-This work contributes to the broader goal of secure, convenient, and accessible biometric authentication, with potential impact across consumer electronics, financial services, access control, and IoT security. Success requires not only technical excellence but also responsible development addressing fairness, privacy, and ethical deployment to serve human needs while respecting individual rights.
+Future implementation will validate the theoretical analysis through empirical evaluation on Replay-Attack, FaceForensics++, and LFW benchmarks. The research establishes a foundation for cost-effective, accurate biometric authentication that addresses the fundamental limitations of single-camera systems while maintaining practical deployability.
 
 % References
 \begin{thebibliography}{99}
