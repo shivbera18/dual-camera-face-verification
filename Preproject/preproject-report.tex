@@ -241,6 +241,13 @@ The system integrates multiple security layers in a unified pipeline:
 
 This multi-modal approach provides defense-in-depth—even if one layer is circumvented, others provide protection. The system achieves >95\% attack detection with <2\% false rejection while maintaining real-time performance (15-30 FPS) on standard hardware.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{Proposed Solution Flow Chart.png}
+\caption{Complete system architecture flow chart showing all processing stages from dual camera input to final verification decision}
+\label{fig:system-flowchart}
+\end{figure}
+
 \section{System Architecture}
 
 % Add Figure: System Architecture Diagram
@@ -372,6 +379,20 @@ The key innovation is joint multi-task learning of five objectives:
 
 \textbf{Comparison with MTCNN}: While MTCNN (Multi-task Cascaded CNN) also provides facial landmarks, it uses a three-stage cascade that is slower (50-80ms per image) and less accurate (92-94\% on WIDER FACE). RetinaFace achieves superior accuracy (97\%) with faster inference (20-30ms).
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{MTCNN comparision.png}
+\caption{Comparison of RetinaFace vs MTCNN showing accuracy and speed improvements}
+\label{fig:mtcnn-comparison}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{MTCNN vs Retina FAce.png}
+\caption{Detailed performance metrics comparing RetinaFace and MTCNN on WIDER FACE benchmark}
+\label{fig:retinaface-mtcnn}
+\end{figure}
+
 \textbf{Comparison with Haar Cascades}: Classical Haar cascade detectors are fast but achieve only 85\% accuracy and fail under challenging conditions (occlusion, extreme pose, poor lighting). They also don't provide facial landmarks.
 
 \textbf{Comparison with YOLO-Face}: While YOLO-based face detectors are very fast (10-15ms), they achieve slightly lower accuracy (94-95\%) and don't provide precise facial landmarks needed for alignment.
@@ -415,6 +436,13 @@ EfficientNet-B0 consists of Mobile Inverted Bottleneck Convolution (MBConv) bloc
 
 The network processes $224 \times 224$ RGB images through 7 stages with progressively increasing channels and decreasing spatial resolution, culminating in global average pooling and a classification head.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{efficient-net.png}
+\caption{EfficientNet-B0 architecture showing MBConv blocks with compound scaling}
+\label{fig:efficientnet-arch}
+\end{figure}
+
 \subsection{Why EfficientNet-B0 for Deepfake Detection}
 
 \textbf{Comparison with XceptionNet}: XceptionNet (23M parameters) achieves 95-96\% accuracy on FaceForensics++ but requires 8.4B FLOPs. EfficientNet-B0 achieves comparable accuracy (94-95\%) with 5.3M parameters and 0.39B FLOPs—21× fewer FLOPs, enabling real-time inference on CPUs.
@@ -424,6 +452,13 @@ The network processes $224 \times 224$ RGB images through 7 stages with progress
 \textbf{Comparison with MobileNetV2}: MobileNetV2 (3.5M parameters) is more compact but achieves only 91-92\% accuracy on deepfake detection. EfficientNet-B0 provides better accuracy-efficiency trade-off.
 
 For our application requiring real-time performance on standard hardware, EfficientNet-B0 provides the optimal balance.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{Efficient-net-comparision.jpg}
+\caption{Performance comparison of EfficientNet-B0 with other architectures showing superior accuracy-efficiency trade-off}
+\label{fig:efficientnet-comparison}
+\end{figure}
 
 \subsection{Transfer Learning Strategy}
 
@@ -478,6 +513,13 @@ For the entire EfficientNet-B0 with 5.3M parameters, applying LoRA with $r=8$ to
 
 \textbf{Accuracy preservation}: Empirical results show LoRA with $r=8$ achieves 98.5\% of full fine-tuning accuracy. For our deepfake detector, this translates to 93.5\% accuracy (LoRA) versus 94.5\% (full fine-tuning)—a 1\% drop for 35× parameter reduction.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{LoRA.png}
+\caption{LoRA architecture showing low-rank decomposition matrices injected into pre-trained model layers}
+\label{fig:lora-architecture}
+\end{figure}
+
 \subsection{Training Strategy with LoRA}
 
 \begin{enumerate}
@@ -492,255 +534,28 @@ For the entire EfficientNet-B0 with 5.3M parameters, applying LoRA with $r=8$ to
 
 At inference, the adapted model computes $h = W_0 x + BAx$ efficiently—the additional computation is negligible (0.39B + 0.02B = 0.41B FLOPs).
 
-% Chapter 5: Implementation Plan and Datasets
-\chapter{Implementation Plan and Datasets}
+% Chapter 5: Implementation and Evaluation
+\chapter{Implementation and Evaluation}
 
-\section{Hardware Requirements}
-
-\subsection{Camera Setup}
-
-\textbf{Cameras}: 2× Logitech C270 USB webcams (720p, 30fps) or equivalent
-\begin{itemize}
-\item Resolution: 1280×720 pixels
-\item Frame rate: 30 FPS
-\item Interface: USB 2.0 or 3.0
-\item Cost: ₹1,200-1,500 each (total: ₹2,400-3,000)
-\end{itemize}
-
-\textbf{Mounting}: Rigid bracket maintaining 6-10cm baseline
-\begin{itemize}
-\item Material: Wood, metal, or 3D-printed plastic
-\item Requirements: Parallel alignment, no movement during operation
-\item Cost: ₹200-500
-\end{itemize}
-
-\textbf{Calibration}: Printed checkerboard pattern (9×6 inner corners, 25mm squares)
-
-\subsection{Computing Hardware}
-
-\textbf{Minimum requirements}:
-\begin{itemize}
-\item CPU: Intel Core i5 / AMD Ryzen 5 or better
-\item RAM: 8 GB
-\item Storage: 20 GB for models and datasets
-\item USB ports: 2× USB 2.0 or better
-\item OS: Windows 10/11 or Ubuntu 20.04+
-\end{itemize}
-
-\textbf{Recommended for training}:
-\begin{itemize}
-\item GPU: NVIDIA GTX 1050 or better (4GB VRAM)
-\item RAM: 16 GB
-\item Storage: 50 GB
-\end{itemize}
-
-\textbf{Performance expectations}:
-\begin{itemize}
-\item CPU-only inference: 10-15 FPS
-\item GPU inference: 25-30 FPS
-\item Training time (GPU): 2-4 hours for deepfake detector, 10 minutes for anti-spoofing
-\end{itemize}
-
-\section{Software Stack}
-
-\begin{table}[h]
-\centering
-\caption{Software Dependencies}
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Library} & \textbf{Version} & \textbf{Purpose} \\
-\hline
-Python & 3.8-3.10 & Programming language \\
-OpenCV & 4.8+ & Stereo vision, image processing \\
-NumPy & 1.24+ & Numerical computations \\
-InsightFace & 0.7+ & RetinaFace, ArcFace \\
-TensorFlow & 2.13+ & EfficientNet training \\
-scikit-learn & 1.3+ & SVM classifier \\
-scikit-image & 0.21+ & LBP features \\
-\hline
-\end{tabular}
-\label{tab:software}
-\end{table}
-
-\section{Datasets}
+\section{Datasets and Training Strategy}
 
 \subsection{Replay-Attack Dataset}
 
-\textbf{Purpose}: Training texture-based anti-spoofing (LBP + SVM)
-
-\textbf{Statistics}:
-\begin{itemize}
-\item Size: 4 GB
-\item Videos: 1,300
-\item Subjects: 50
-\item Attack types: Printed photos, video replay on screens
-\item Conditions: Controlled and adverse lighting
-\end{itemize}
-
-\textbf{Data split}:
-\begin{itemize}
-\item Training: 360 videos (180 real + 180 attack)
-\item Validation: 360 videos
-\item Test: 480 videos
-\end{itemize}
-
-\textbf{Usage}: Extract frames, compute LBP features, train SVM classifier
+Used for training texture-based anti-spoofing (LBP + SVM). Contains 1,300 videos (4 GB) with 50 subjects under controlled and adverse lighting. Attack types include printed photos and video replay on screens. Training uses 360 videos (180 real + 180 attack), with 480 videos reserved for testing.
 
 \subsection{FaceForensics++ Dataset}
 
-\textbf{Purpose}: Training deepfake detector (EfficientNet-B0)
-
-\textbf{Statistics}:
-\begin{itemize}
-\item Size: 3 GB (face crops only, not full videos)
-\item Videos: 5,000 (1,000 real + 4,000 manipulated)
-\item Manipulation types: DeepFakes, Face2Face, FaceSwap, NeuralTextures
-\item Quality levels: High quality (c23 compression)
-\end{itemize}
-
-\textbf{Data split}:
-\begin{itemize}
-\item Training: 720 videos per manipulation type
-\item Validation: 140 videos per manipulation type
-\item Test: 140 videos per manipulation type
-\end{itemize}
-
-\textbf{Download}: Face crops only (not full videos) to save storage
+Used for training the EfficientNet-B0 deepfake detector. Contains 5,000 videos (3 GB face crops) with four manipulation types: DeepFakes, Face2Face, FaceSwap, and NeuralTextures. Training employs transfer learning from ImageNet pre-trained weights, fine-tuning on 720 videos per manipulation type for 15 epochs with LoRA adaptation ($r=8$). This achieves 94-95\% accuracy with only 150K trainable parameters.
 
 \subsection{LFW Dataset}
 
-\textbf{Purpose}: Evaluating face verification accuracy
+Used for benchmarking face verification accuracy. Contains 13,233 images across 5,749 subjects with 6,000 evaluation pairs (3,000 matched, 3,000 mismatched). Pre-trained ArcFace models achieve >99\% accuracy on this benchmark without additional training.
 
-\textbf{Statistics}:
-\begin{itemize}
-\item Size: 200 MB
-\item Images: 13,233
-\item Subjects: 5,749
-\item Pairs: 6,000 (3,000 matched, 3,000 mismatched)
-\end{itemize}
+\section{Performance Targets and Evaluation}
 
-\textbf{Usage}: Benchmark ArcFace performance (target: >99\% accuracy)
+The system targets >95\% anti-spoofing accuracy with <2\% Attack Presentation Classification Error Rate (APCER) and <3\% Bona Fide Presentation Classification Error Rate (BPCER). For deepfake detection, the target is >93\% accuracy with >0.95 AUC. Face verification aims for >99\% accuracy on LFW benchmark. System-level performance targets include <200ms end-to-end latency, >15 FPS throughput, and <5 MB model size with LoRA adaptation.
 
-\subsection{Custom Dataset}
-
-\textbf{Purpose}: Testing specific camera setup and demo
-
-\textbf{Plan}: Record 10-20 subjects (friends, family with permission)
-\begin{itemize}
-\item Real faces: 3-5 videos per person (different angles, distances)
-\item Photo attacks: Phone display, printed photos
-\item Video attacks: Laptop replay, tablet replay
-\item Total size: 1-2 GB
-\end{itemize}
-
-\section{Implementation Timeline}
-
-\begin{table}[h]
-\centering
-\caption{12-Week Implementation Schedule}
-\begin{tabular}{|l|l|}
-\hline
-\textbf{Week} & \textbf{Tasks} \\
-\hline
-1-2 & Hardware setup, stereo calibration \\
-3 & Stereo depth computation (SGBM) \\
-4 & Face detection integration (RetinaFace) \\
-5 & Depth-based liveness detection \\
-6 & Texture anti-spoofing training (LBP+SVM) \\
-7-8 & Deepfake detector training (EfficientNet) \\
-9 & Face recognition integration (ArcFace) \\
-10 & System integration, LoRA optimization \\
-11 & Testing, custom dataset recording \\
-12 & Documentation, presentation \\
-\hline
-\end{tabular}
-\label{tab:timeline}
-\end{table}
-
-% Chapter 6: Expected Results and Evaluation
-\chapter{Expected Results and Evaluation Metrics}
-
-\section{Performance Targets}
-
-\subsection{Anti-Spoofing Performance}
-
-\begin{table}[h]
-\centering
-\caption{Anti-Spoofing Performance Targets}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Metric} & \textbf{Target} & \textbf{Excellent} \\
-\hline
-Accuracy & >95\% & >98\% \\
-APCER (False Accept) & <2\% & <0.5\% \\
-BPCER (False Reject) & <3\% & <1\% \\
-Speed (FPS) & >20 & >30 \\
-\hline
-\end{tabular}
-\label{tab:antispoofing-targets}
-\end{table}
-
-\textbf{APCER} (Attack Presentation Classification Error Rate): Percentage of attack samples incorrectly classified as real
-
-\textbf{BPCER} (Bona Fide Presentation Classification Error Rate): Percentage of real samples incorrectly classified as attacks
-
-\textbf{ACER} (Average Classification Error Rate): $(APCER + BPCER) / 2$
-
-\subsection{Deepfake Detection Performance}
-
-\begin{table}[h]
-\centering
-\caption{Deepfake Detection Performance Targets}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Metric} & \textbf{Target} & \textbf{Excellent} \\
-\hline
-Accuracy & >93\% & >96\% \\
-AUC & >0.95 & >0.98 \\
-Precision & >90\% & >95\% \\
-Recall & >90\% & >95\% \\
-\hline
-\end{tabular}
-\label{tab:deepfake-targets}
-\end{table}
-
-\subsection{Face Verification Performance}
-
-\begin{table}[h]
-\centering
-\caption{Face Verification Performance Targets}
-\begin{tabular}{|l|c|}
-\hline
-\textbf{Metric} & \textbf{Target} \\
-\hline
-Accuracy (LFW) & >99\% \\
-FAR @ 0.1\% FRR & <0.01\% \\
-Speed (FPS) & >25 \\
-\hline
-\end{tabular}
-\label{tab:verification-targets}
-\end{table}
-
-\subsection{System-Level Performance}
-
-\begin{table}[h]
-\centering
-\caption{System-Level Performance Targets}
-\begin{tabular}{|l|c|}
-\hline
-\textbf{Metric} & \textbf{Target} \\
-\hline
-End-to-end latency & <200ms \\
-Throughput & >15 FPS \\
-Memory usage & <2 GB \\
-CPU usage & <80\% \\
-Model size (with LoRA) & <5 MB \\
-\hline
-\end{tabular}
-\label{tab:system-targets}
-\end{table}
-
-\section{Comparison with Existing Methods}
+\section{Comparative Analysis}
 
 \begin{table}[h]
 \centering
@@ -757,54 +572,9 @@ Depth Sensor & 98\% & 0.5\% & 15 FPS & \$300 \\
 \label{tab:comparison}
 \end{table}
 
-Our dual-camera approach achieves accuracy approaching depth sensor systems at 1/5 the cost, while maintaining real-time performance superior to depth sensors.
+The dual-camera approach achieves accuracy approaching depth sensor systems at 1/5 the cost while maintaining superior real-time performance. Evaluation will be conducted on Replay-Attack (480 test videos), FaceForensics++ (560 test videos), and LFW (6,000 pairs) benchmarks. Ablation studies will quantify each component's contribution, with expected findings showing multi-modal fusion (depth + texture) provides 3-5\% accuracy improvement over single modality, while LoRA causes <1\% accuracy drop with 35× model size reduction.
 
-\section{Evaluation Methodology}
-
-\subsection{Anti-Spoofing Evaluation}
-
-\textbf{Test protocol}:
-\begin{enumerate}
-\item Evaluate on Replay-Attack test set (480 videos)
-\item Compute APCER, BPCER, ACER metrics
-\item Generate ROC curves for depth and texture modalities
-\item Analyze failure cases (which attacks succeed)
-\end{enumerate}
-
-\subsection{Deepfake Detection Evaluation}
-
-\textbf{Test protocol}:
-\begin{enumerate}
-\item Evaluate on FaceForensics++ test set (560 videos)
-\item Compute accuracy, precision, recall, AUC
-\item Test cross-dataset generalization on Celeb-DF
-\item Analyze per-manipulation-type performance
-\end{enumerate}
-
-\subsection{Face Verification Evaluation}
-
-\textbf{Test protocol}:
-\begin{enumerate}
-\item Evaluate on LFW benchmark (6,000 pairs)
-\item Compute verification accuracy at threshold $\tau=0.6$
-\item Generate ROC curve, compute AUC
-\item Measure FAR at various FRR operating points
-\end{enumerate}
-
-\subsection{Ablation Studies}
-
-To understand each component's contribution:
-
-\begin{enumerate}
-\item \textbf{Depth only}: Disable texture anti-spoofing
-\item \textbf{Texture only}: Disable depth analysis
-\item \textbf{No deepfake detection}: Measure impact on AI-generated faces
-\item \textbf{Without LoRA}: Compare full fine-tuning vs LoRA
-\end{enumerate}
-
-Expected findings: Multi-modal fusion (depth + texture) provides 3-5\% accuracy improvement over single modality. LoRA causes <1\% accuracy drop while reducing model size by 35×.
-
-% Chapter 7: Conclusion and Future Work
+% Chapter 6: Conclusion and Future Work
 \chapter{Conclusion and Future Work}
 
 \section{Summary}
