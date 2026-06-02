@@ -1,0 +1,33 @@
+efficientnet:
+  backbone: efficientnet_b0
+  pretrained: imagenet
+  input_size: [224, 224, 3]
+  output: sigmoid
+  loss: binary_cross_entropy
+  optimizer: adam
+  lr: 1.0e-4
+  batch_size: 32
+  epochs: 20
+  early_stopping_patience: 5
+  checkpoint: artifacts/models/efficientnet_b0_baseline_best.pth
+
+arcface:
+  model: buffalo_l
+  embedding_dim: 512
+  similarity: cosine
+  threshold_match: 0.60
+  enrollment_samples: 10
+  enrollment_db: artifacts/models/enrollment_db.pkl
+
+retinaface:
+  min_face_size: 40
+  detection_threshold: 0.8
+  align_output_size: [224, 224]
+
+augmentation:
+  horizontal_flip: 0.5
+  brightness_contrast: 0.3
+  gaussian_blur: 0.2
+  gaussian_noise: 0.2
+  jpeg_compression: 0.3
+  resize_crop: 0.2

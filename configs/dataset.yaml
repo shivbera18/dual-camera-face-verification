@@ -1,0 +1,33 @@
+data_root: data
+
+raw:
+  faceforensicspp: data/raw/faceforensicspp
+  lfw: data/raw/lfw/lfw
+  lfw_pairs: data/raw/lfw/pairs.txt
+  celebdf: data/raw/celebdf
+  custom_single: data/raw/custom/single_cam
+  custom_dual: data/raw/custom/dual_cam
+
+processed:
+  deepfake_faces: data/processed/deepfake_faces
+  verification_faces: data/processed/verification_faces
+
+splits:
+  manifest: data/splits/deepfake_manifest.csv
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+faceforensicspp:
+  compression: c23
+  manipulations:
+    - Deepfakes
+    - Face2Face
+    - FaceSwap
+    - NeuralTextures
+  real_label: 0
+  fake_label: 1
+
+lfw:
+  pairs_file: data/raw/lfw/pairs.txt
+  num_pairs: 6000

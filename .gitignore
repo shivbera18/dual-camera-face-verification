@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Large data files
+data/raw/lfw/lfw.tgz
+data/raw/lfw/lfw/
+data/raw/faceforensicspp/
+data/raw/celebdf/
+data/raw/custom/
+data
+
+# Model artifacts (large binaries)
+artifacts/models/*.pth
+artifacts/models/*.h5
+artifacts/models/*.pkl
+artifacts/models/*.onnx
+*.onnx
+
+# Logs
+artifacts/logs/
+
+# OS
+.DS_Store
+*.swp

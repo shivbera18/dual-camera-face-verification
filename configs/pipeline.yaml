@@ -1,0 +1,25 @@
+single_camera:
+  fake_threshold: 0.5
+  match_threshold: 0.60
+  min_face_confidence: 0.8
+  min_face_size: 40
+
+dual_camera:
+  sync_delta_ms: 50
+  fake_threshold: 0.5
+  match_threshold: 0.60
+  fusion:
+    fake_score: mean          # mean or max
+    match_score: max          # mean or max
+  fallback_single_view: true
+
+decisions:
+  ACCEPT: real face + identity matched
+  REJECT_FAKE: fake/deepfake detected
+  REJECT_IDENTITY: real face but identity mismatch
+  RETRY: no face or low confidence
+
+logging:
+  level: INFO
+  log_dir: artifacts/logs
+  save_image_pairs: false     # enable for debug/demo collection
