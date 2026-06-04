@@ -71,7 +71,7 @@ class SingleCamPipeline:
             )
         x = preprocess_for_efficientnet(crop).to(self.device)
         with torch.no_grad():
-            fake_score = float(self.deepfake(x).item())
+            fake_score = float(self.deepfake.predict_proba(x).item())
         emb = self.arcface.get_embedding(crop)
         return (
             ViewResult(

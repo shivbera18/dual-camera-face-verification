@@ -9,7 +9,7 @@ from typing import Optional
 import torch
 
 from src.models.efficientnet import build_classifier
-from src.models.lora import count_trainable_params, count_total_params, inject_lora
+from src.models.lora import build_lora_classifier, count_trainable_params, count_total_params
 from src.training.augmentation import get_val_transform
 from src.training.dataset import DeepfakeDataset
 from src.training.evaluate import evaluate_classifier, save_report
@@ -25,17 +25,14 @@ def _make_test_loader(manifest: str, batch_size: int, num_workers: int):
     return DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
 
-def _load_model(ckpt: str, rank: Optional[int], alpha: float, device):
-    model = build_classifier(
-        checkpoint=ckpt,
-        pretrained=False,
-        freeze_backbone=True,
-        device=device,
-    )
+def _load_model(ckpt: str, rank: Optional[int], alpha: Optional[float], device):
     if rank is not None:
-        model = inject_lora(model, rank=rank, alpha=alpha)
-    model.eval()
-    return model
+        return build_lora_classifier(
+            checkpoint=ckpt, rank=rank, alpha=alpha, device=device
+        )
+    return build_classifier(
+        checkpoint=ckpt, pretrained=False, freeze_backbone=True, device=device
+    )
 
 
 @torch.no_grad()
@@ -50,7 +47,7 @@ def _measure_latency(model, loader, device, n_batches: int = 10) -> float:
         except StopIteration:
             break
         x = x.to(device)
-        _ = model(x)
+        _ = model.predict_proba(x)
         n += x.size(0)
     elapsed = (time.time() - t0) / max(n, 1)
     return float(elapsed * 1000.0)
@@ -59,7 +56,7 @@ def _measure_latency(model, loader, device, n_batches: int = 10) -> float:
 def compare(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     test_loader = _make_test_loader(args.manifest, args.batch_size, args.num_workers)
-    baseline = _load_model(args.baseline_ckpt, rank=None, alpha=0.0, device=device)
+    baseline = _load_model(args.baseline_ckpt, rank=None, alpha=None, device=device)
     lora = _load_model(args.lora_ckpt, rank=args.rank, alpha=args.alpha, device=device)
     base_metrics = evaluate_classifier(baseline, test_loader, threshold=0.5, device=device)
     lora_metrics = evaluate_classifier(lora, test_loader, threshold=0.5, device=device)
@@ -100,7 +97,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--baseline_ckpt", type=str, default="artifacts/models/efficientnet_b0_baseline_best.pth")
     p.add_argument("--lora_ckpt", type=str, default="artifacts/models/efficientnet_b0_lora_best.pth")
     p.add_argument("--rank", type=int, default=4)
-    p.add_argument("--alpha", type=float, default=1.0)
+    p.add_argument("--alpha", type=float, default=None)
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--num_workers", type=int, default=2)
     return p.parse_args()

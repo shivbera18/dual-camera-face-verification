@@ -1,24 +1,28 @@
 """LoRA adapters for parameter-efficient fine-tuning."""
 from __future__ import annotations
 
-from typing import Iterable
+from pathlib import Path
+from typing import Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models.efficientnet import DeepfakeClassifier
+from src.models.efficientnet import DeepfakeClassifier, _load_state_into
+from src.utils.config import resolve
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class LoRALinear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, rank: int = 4, alpha: float = 1.0) -> None:
+    def __init__(self, in_features: int, out_features: int, rank: int = 4, alpha: Optional[float] = None) -> None:
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
+        if alpha is None:
+            alpha = float(rank)
         self.alpha = alpha
         self.weight = nn.Parameter(torch.empty(out_features, in_features), requires_grad=False)
         self.bias = nn.Parameter(torch.zeros(out_features), requires_grad=False)
@@ -35,13 +39,13 @@ class LoRALinear(nn.Module):
 
 
 def _is_target_module(name: str, target_modules: Iterable[str]) -> bool:
-    return any(name.endswith(t) or t in name for t in target_modules)
+    return any(name == t or name.endswith("." + t) or t in name for t in target_modules)
 
 
 def inject_lora(
     model: DeepfakeClassifier,
     rank: int = 4,
-    alpha: float = 1.0,
+    alpha: Optional[float] = None,
     target_modules: Iterable[str] = ("classifier.1",),
 ) -> DeepfakeClassifier:
     for p in model.parameters():
@@ -62,6 +66,25 @@ def inject_lora(
     else:
         logger.info("inject_lora: replaced %d Linear layer(s) rank=%d", replaced, rank)
     return model
+
+
+def build_lora_classifier(
+    checkpoint: Optional[Union[str, Path]] = None,
+    rank: int = 4,
+    alpha: Optional[float] = None,
+    target_modules: Iterable[str] = ("classifier.1",),
+    device: Union[str, torch.device] = "cpu",
+) -> DeepfakeClassifier:
+    """Build a DeepfakeClassifier with LoRA injected, THEN load checkpoint.
+
+    Critical ordering: injecting LoRA first means the saved state_dict's
+    `classifier.1.A` / `classifier.1.B` keys have a target to load into.
+    """
+    model = DeepfakeClassifier(pretrained=False, freeze_backbone=True)
+    model = inject_lora(model, rank=rank, alpha=alpha, target_modules=target_modules)
+    if checkpoint:
+        _load_state_into(model, checkpoint, device)
+    return model.to(device)
 
 
 def count_trainable_params(model: nn.Module) -> int:

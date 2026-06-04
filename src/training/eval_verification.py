@@ -31,10 +31,14 @@ def _parse_pairs(pairs_file: Path) -> list[tuple[tuple[str, str], tuple[str, str
             parts = line.split("\t")
             if len(parts) == 3:
                 name, idx1, idx2 = parts
-                out.append(((f"{name}/{idx1}.jpg", name), (f"{name}/{idx2}.jpg", name), 1))
+                f1 = f"{name}_{int(idx1):04d}.jpg"
+                f2 = f"{name}_{int(idx2):04d}.jpg"
+                out.append(((f1, name), (f2, name), 1))
             elif len(parts) == 4:
                 n1, i1, n2, i2 = parts
-                out.append(((f"{n1}/{i1}.jpg", n1), (f"{n2}/{i2}.jpg", n2), 0))
+                f1 = f"{n1}_{int(i1):04d}.jpg"
+                f2 = f"{n2}_{int(i2):04d}.jpg"
+                out.append(((f1, n1), (f2, n2), 0))
     return out
 
 

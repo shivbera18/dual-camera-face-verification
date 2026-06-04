@@ -71,7 +71,7 @@ def train_lora(args: argparse.Namespace) -> None:
     optimizer = torch.optim.Adam(
         [p for p in model.parameters() if p.requires_grad], lr=args.lr
     )
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     best_auc = -1.0
     best_state = None
     bad_epochs = 0
@@ -121,7 +121,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--baseline_checkpoint", type=str, default="artifacts/models/efficientnet_b0_baseline_best.pth")
     p.add_argument("--rank", type=int, default=4)
-    p.add_argument("--alpha", type=float, default=1.0)
+    p.add_argument("--alpha", type=float, default=None)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--epochs", type=int, default=10)
     p.add_argument("--patience", type=int, default=5)

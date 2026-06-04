@@ -40,7 +40,7 @@ class FaceDetector:
         cfg = get_model_config().get("retinaface", {})
         self.min_confidence = float(cfg.get("detection_threshold", min_confidence))
         self.min_face_size = int(cfg.get("min_face_size", 40))
-        self.app = FaceAnalysis(name=model_name)
+        self.app = FaceAnalysis(name=model_name, allowed_modules=["detection"])
         self.app.prepare(ctx_id=ctx_id, det_size=det_size)
         logger.info(
             "FaceDetector ready: model=%s det_size=%s min_conf=%.2f",

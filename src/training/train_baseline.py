@@ -51,17 +51,13 @@ def _train_one_epoch(
         x = x.to(device, non_blocking=True)
         y = y.float().to(device, non_blocking=True)
         optimizer.zero_grad()
-        out = model(x)
-        loss = criterion(out, y)
+        logits = model(x)
+        loss = criterion(logits, y)
         loss.backward()
         optimizer.step()
         total += float(loss.item()) * x.size(0)
         n += x.size(0)
     return total / max(n, 1)
-
-
-def _move_batch(batch, device):
-    return batch
 
 
 def train_baseline(args: argparse.Namespace) -> None:
@@ -75,7 +71,7 @@ def train_baseline(args: argparse.Namespace) -> None:
         freeze_backbone=True,
         device=device,
     )
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
         [p for p in model.parameters() if p.requires_grad],
         lr=args.lr_head,
@@ -147,7 +143,7 @@ def train_baseline(args: argparse.Namespace) -> None:
     with torch.no_grad():
         for x, y in loaders["test"]:
             x = x.to(device)
-            p = model(x).detach().cpu().numpy()
+            p = model.predict_proba(x).detach().cpu().numpy()
             probs_list.extend(p.tolist())
             y_true_list.extend(y.numpy().tolist())
     import numpy as np

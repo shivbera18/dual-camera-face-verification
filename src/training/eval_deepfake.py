@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.models.efficientnet import build_classifier
-from src.models.lora import inject_lora
+from src.models.lora import build_lora_classifier
 from src.training.augmentation import get_val_transform
 from src.training.dataset import DeepfakeDataset
 from src.training.evaluate import (
@@ -37,7 +37,7 @@ def _collect_probs(model, loader, device) -> tuple[np.ndarray, np.ndarray]:
     labels: list[int] = []
     for x, y in loader:
         x = x.to(device)
-        p = model(x).detach().cpu().numpy()
+        p = model.predict_proba(x).detach().cpu().numpy()
         probs.extend(p.tolist())
         labels.extend(y.numpy().tolist())
     return np.array(probs), np.array(labels)
@@ -47,14 +47,20 @@ def run(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     manifest = args.manifest or get_dataset_config()["splits"]["manifest"]
     loader = _make_loader(manifest, args.batch_size, args.num_workers)
-    model = build_classifier(
-        checkpoint=args.checkpoint,
-        pretrained=False,
-        freeze_backbone=True,
-        device=device,
-    )
     if args.model == "lora":
-        model = inject_lora(model, rank=args.rank, alpha=args.alpha)
+        model = build_lora_classifier(
+            checkpoint=args.checkpoint,
+            rank=args.rank,
+            alpha=args.alpha,
+            device=device,
+        )
+    else:
+        model = build_classifier(
+            checkpoint=args.checkpoint,
+            pretrained=False,
+            freeze_backbone=True,
+            device=device,
+        )
     metrics = evaluate_classifier(model, loader, threshold=args.threshold, device=device)
     probs, y = _collect_probs(model, loader, device)
     plot_confusion_matrix(metrics["confusion_matrix"], f"artifacts/metrics/{args.tag}_confusion_matrix.png")
@@ -75,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint", type=str, default="artifacts/models/efficientnet_b0_baseline_best.pth")
     p.add_argument("--tag", type=str, default="eval")
     p.add_argument("--rank", type=int, default=4)
-    p.add_argument("--alpha", type=float, default=1.0)
+    p.add_argument("--alpha", type=float, default=None)
     p.add_argument("--threshold", type=float, default=0.5)
     p.add_argument("--manifest", type=str, default=None)
     p.add_argument("--batch_size", type=int, default=32)

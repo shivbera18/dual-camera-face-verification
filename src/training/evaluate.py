@@ -39,7 +39,7 @@ def evaluate_classifier(
     labels: list[int] = []
     for x, y in dataloader:
         x = x.to(device)
-        p = model(x).detach().cpu().numpy()
+        p = model.predict_proba(x).detach().cpu().numpy()
         probs.extend(p.tolist())
         labels.extend(y.numpy().tolist())
     if not probs:
