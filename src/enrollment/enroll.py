@@ -99,6 +99,11 @@ def main() -> None:
     parser.add_argument("--ctx-id", type=int, default=-1)
     args = parser.parse_args()
 
+    from src.training.train_baseline import get_device
+    device = get_device("auto")
+    if args.ctx_id < 0 and device.type in ("cuda", "mps"):
+        args.ctx_id = 0
+
     model_cfg = get_model_config()
     store = EnrollmentStore(args.db or model_cfg["arcface"]["enrollment_db"])
     detector = FaceDetector(

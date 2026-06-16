@@ -129,6 +129,9 @@ def build_dual_pipeline(
     device: str = "auto", checkpoint: str | None = None, ctx_id: int = -1
 ) -> DualCamPipeline:
     cfg = get_pipeline_config()
+    device = get_device(device)
+    if ctx_id < 0 and device.type in ("cuda", "mps"):
+        ctx_id = 0
     single = build_pipeline(device, checkpoint, ctx_id)
     decision = DecisionEngine(
         fake_threshold=float(cfg["dual_camera"]["fake_threshold"]),
