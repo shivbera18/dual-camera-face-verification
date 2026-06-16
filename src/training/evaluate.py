@@ -19,7 +19,9 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
     roc_curve,
+    det_curve,
 )
+from sklearn.calibration import calibration_curve
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -139,6 +141,58 @@ def plot_pr_curve(labels: np.ndarray, probs: np.ndarray, save_path: str | Path) 
     plt.close(fig)
 
 
+def plot_score_distribution(labels: np.ndarray, probs: np.ndarray, save_path: str | Path) -> None:
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    real_probs = probs[labels == 0]
+    fake_probs = probs[labels == 1]
+    ax.hist(real_probs, bins=50, alpha=0.6, label="Real", color="blue", density=True)
+    ax.hist(fake_probs, bins=50, alpha=0.6, label="Fake", color="red", density=True)
+    ax.set_xlabel("Predicted Probability (Fake)")
+    ax.set_ylabel("Density")
+    ax.legend(loc="upper center")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+def plot_det_curve(labels: np.ndarray, probs: np.ndarray, save_path: str | Path) -> None:
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    if len(np.unique(labels)) > 1:
+        fpr, fnr, _ = det_curve(labels, probs)
+        ax.plot(fpr, fnr, label="DET Curve")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("False Positive Rate (FAR)")
+    ax.set_ylabel("False Negative Rate (FRR)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+def plot_calibration_curve_diag(labels: np.ndarray, probs: np.ndarray, save_path: str | Path) -> None:
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    if len(np.unique(labels)) > 1:
+        prob_true, prob_pred = calibration_curve(labels, probs, n_bins=10)
+        ax.plot(prob_pred, prob_true, marker='o', label="Model Calibration")
+    ax.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfect Calibration")
+    ax.set_xlabel("Mean Predicted Probability")
+    ax.set_ylabel("Fraction of Positives")
+    ax.legend(loc="lower right")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def save_report(report: dict[str, Any], save_path: str | Path) -> None:
     path = resolve_project_path(save_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,5 +259,8 @@ def evaluate_classifier(
     )
     plot_roc_curve(labels, probs, f"{artifact_prefix}_roc.png")
     plot_pr_curve(labels, probs, f"{artifact_prefix}_pr.png")
+    plot_score_distribution(labels, probs, f"{artifact_prefix}_score_dist.png")
+    plot_det_curve(labels, probs, f"{artifact_prefix}_det.png")
+    plot_calibration_curve_diag(labels, probs, f"{artifact_prefix}_calibration.png")
     save_report(report, f"{artifact_prefix}_report.json")
     return report
