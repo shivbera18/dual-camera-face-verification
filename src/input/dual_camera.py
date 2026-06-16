@@ -87,13 +87,14 @@ class DualCameraCapture:
     def get_pair(self) -> tuple[Frame, Frame] | None:
         if self.left_q.empty() or self.right_q.empty():
             return None
-        left = self.left_q.get()
-        candidates = [self.right_q.get()]
+        left = None
+        while not self.left_q.empty():
+            left = self.left_q.get()
+        right = None
         while not self.right_q.empty():
-            candidates.append(self.right_q.get())
-        right = min(
-            candidates, key=lambda frame: abs(frame.timestamp_ms - left.timestamp_ms)
-        )
+            right = self.right_q.get()
+        if left is None or right is None:
+            return None
         if abs(left.timestamp_ms - right.timestamp_ms) > self.sync_delta_ms:
             return None
         return left, right

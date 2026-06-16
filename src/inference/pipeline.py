@@ -23,14 +23,12 @@ class SingleCamPipeline:
         self,
         detector: FaceDetector,
         deepfake_model: torch.nn.Module,
-        arcface: ArcFaceExtractor,
         store: EnrollmentStore,
         decision_engine: DecisionEngine,
         device: torch.device,
     ) -> None:
         self.detector = detector
         self.deepfake_model = deepfake_model.to(device).eval()
-        self.arcface = arcface
         self.store = store
         self.decision_engine = decision_engine
         self.device = device
@@ -62,9 +60,9 @@ class SingleCamPipeline:
             if template is None:
                 no_template = True
             else:
-                emb = self.arcface.get_embedding(crop)
+                emb = face.embedding
                 if emb is not None:
-                    match_score = self.arcface.similarity(template, emb)
+                    match_score = ArcFaceExtractor.similarity(template, emb)
         latency = (time.perf_counter() - started) * 1000.0
         return self.decision_engine.decide(
             fake_score=fake_score,
@@ -106,12 +104,13 @@ def build_pipeline(
     model_cfg = get_model_config()
     pipe_cfg = get_pipeline_config()
     device = get_device(device_name)
+    if ctx_id < 0 and device.type in ("cuda", "mps"):
+        ctx_id = 0
     detector = FaceDetector(
         model_name=model_cfg["arcface"]["model"],
         min_confidence=float(pipe_cfg["single_camera"]["min_face_confidence"]),
         ctx_id=ctx_id,
     )
-    arcface = ArcFaceExtractor(model_pack=model_cfg["arcface"]["model"], ctx_id=ctx_id)
     deepfake, _ = load_deepfake_checkpoint(
         resolve_project_path(checkpoint or model_cfg["efficientnet"]["checkpoint"]),
         device=device,
@@ -124,7 +123,7 @@ def build_pipeline(
         min_face_confidence=float(pipe_cfg["single_camera"]["min_face_confidence"]),
         min_face_size=int(pipe_cfg["single_camera"]["min_face_size"]),
     )
-    return SingleCamPipeline(detector, deepfake, arcface, store, decision, device)
+    return SingleCamPipeline(detector, deepfake, store, decision, device)
 
 
 def main() -> None:

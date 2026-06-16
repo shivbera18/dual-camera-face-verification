@@ -10,6 +10,7 @@ class FaceResult:
     bbox: np.ndarray
     landmarks: np.ndarray
     confidence: float
+    embedding: np.ndarray | None = None
 
     @property
     def width(self) -> float:
@@ -43,8 +44,14 @@ class FaceDetector:
         self.model_name = model_name
         self.det_size = det_size
         self.min_confidence = min_confidence
+        import onnxruntime
+        providers = ["CPUExecutionProvider"]
+        if ctx_id >= 0:
+            avail = onnxruntime.get_available_providers()
+            providers = [p for p in ["CoreMLExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"] if p in avail]
+
         self.app = FaceAnalysis(
-            name=model_name, providers=["CPUExecutionProvider"] if ctx_id < 0 else None
+            name=model_name, providers=providers
         )
         self.app.prepare(ctx_id=ctx_id, det_size=det_size)
 
@@ -60,7 +67,15 @@ class FaceDetector:
             landmarks = np.asarray(face.kps, dtype=np.float32)
             if bbox.shape != (4,) or landmarks.shape != (5, 2):
                 continue
-            results.append(FaceResult(bbox=bbox, landmarks=landmarks, confidence=score))
+            emb = getattr(face, "normed_embedding", None)
+            if emb is None:
+                emb = getattr(face, "embedding", None)
+            if emb is not None:
+                emb = np.asarray(emb, dtype=np.float32)
+                norm = np.linalg.norm(emb)
+                if norm > 0:
+                    emb = emb / norm
+            results.append(FaceResult(bbox=bbox, landmarks=landmarks, confidence=score, embedding=emb))
         return sorted(results, key=lambda f: f.area, reverse=True)
 
     def detect_best(self, img: np.ndarray) -> FaceResult | None:

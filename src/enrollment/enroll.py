@@ -20,7 +20,6 @@ def enroll_from_images(
     user_id: str,
     image_paths: list[str | Path],
     detector: FaceDetector,
-    extractor: ArcFaceExtractor,
     store: EnrollmentStore,
 ) -> int:
     embeddings: list[np.ndarray] = []
@@ -34,13 +33,12 @@ def enroll_from_images(
         if face is None:
             LOGGER.warning("Skipping image with no detected face: %s", path)
             continue
-        crop = align_face(img, face.landmarks, (224, 224))
-        emb = extractor.get_embedding(crop)
+        emb = face.embedding
         if emb is None:
             LOGGER.warning("Skipping image with no ArcFace embedding: %s", path)
             continue
         embeddings.append(emb)
-    store.enroll(user_id, embeddings, model_name=extractor.model_pack)
+    store.enroll(user_id, embeddings, model_name=detector.model_name)
     LOGGER.info("Enrolled user %s with %d samples", user_id, len(embeddings))
     return len(embeddings)
 
@@ -49,7 +47,6 @@ def enroll_from_webcam(
     user_id: str,
     n_samples: int,
     detector: FaceDetector,
-    extractor: ArcFaceExtractor,
     store: EnrollmentStore,
     camera_index: int = 0,
 ) -> int:
@@ -81,14 +78,13 @@ def enroll_from_webcam(
             if key == 27:
                 break
             if key == 32 and face is not None:
-                crop = align_face(frame, face.landmarks, (224, 224))
-                emb = extractor.get_embedding(crop)
+                emb = face.embedding
                 if emb is not None:
                     embeddings.append(emb)
     finally:
         cap.release()
         cv2.destroyAllWindows()
-    store.enroll(user_id, embeddings, model_name=extractor.model_pack)
+    store.enroll(user_id, embeddings, model_name=detector.model_name)
     return len(embeddings)
 
 
@@ -110,21 +106,17 @@ def main() -> None:
         min_confidence=float(model_cfg["retinaface"]["detection_threshold"]),
         ctx_id=args.ctx_id,
     )
-    extractor = ArcFaceExtractor(
-        model_pack=model_cfg["arcface"]["model"], ctx_id=args.ctx_id
-    )
     if args.webcam:
         count = enroll_from_webcam(
             args.user_id,
             int(args.samples or model_cfg["arcface"]["enrollment_samples"]),
             detector,
-            extractor,
             store,
             args.camera,
         )
     else:
         count = enroll_from_images(
-            args.user_id, args.images, detector, extractor, store
+            args.user_id, args.images, detector, store
         )
     print(
         f"Enrolled {args.user_id} with {count} embeddings. Users: {store.list_users()}"

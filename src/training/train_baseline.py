@@ -340,7 +340,7 @@ def fit(args: argparse.Namespace) -> dict[str, Any]:
         weight_decay=float(args.weight_decay),
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=max(1, epochs_stage1)
+        optimizer, T_max=max(1, epochs_stage1 * len(train_loader))
     )
     stopped = run_stage(
         "head", epochs_stage1, float(args.lr_stage1), optimizer, scheduler

@@ -15,8 +15,14 @@ class ArcFaceExtractor:
         from insightface.app import FaceAnalysis
 
         self.model_pack = model_pack
+        import onnxruntime
+        providers = ["CPUExecutionProvider"]
+        if ctx_id >= 0:
+            avail = onnxruntime.get_available_providers()
+            providers = [p for p in ["CoreMLExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"] if p in avail]
+
         self.app = FaceAnalysis(
-            name=model_pack, providers=["CPUExecutionProvider"] if ctx_id < 0 else None
+            name=model_pack, providers=providers
         )
         self.app.prepare(ctx_id=ctx_id, det_size=det_size)
 
