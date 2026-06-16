@@ -38,7 +38,7 @@ If these generated artifacts are deleted later, recreate them with the preproces
 ## 2. Environment setup
 
 ```bash
-python -m venv .venv
+uv run python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -47,8 +47,8 @@ pip install -r requirements.txt
 If InsightFace or EfficientNet weights are not already cached, they will download on first use. You can pre-download them:
 
 ```bash
-python -c "from insightface.app import FaceAnalysis; app=FaceAnalysis(name='buffalo_l'); app.prepare(ctx_id=-1)"
-python -c "from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights; efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)"
+uv run python -c "from insightface.app import FaceAnalysis; app=FaceAnalysis(name='buffalo_l'); app.prepare(ctx_id=-1)"
+uv run python -c "from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights; efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)"
 ```
 
 Use `ctx_id=-1` for CPU and `ctx_id=0` for GPU where supported by ONNX Runtime.
@@ -58,7 +58,7 @@ Use `ctx_id=-1` for CPU and `ctx_id=0` for GPU where supported by ONNX Runtime.
 ## 3. Check dataset completeness
 
 ```bash
-python -m src.training.check_dataset
+uv run python -m src.training.check_dataset
 ```
 
 Output is also saved to:
@@ -81,25 +81,25 @@ The downloaded FF++, 140k, and ciplab datasets are already face crops, so prepro
 Recommended full command:
 
 ```bash
-python -m src.training.preprocess --link-mode symlink
+uv run python -m src.training.preprocess --link-mode symlink
 ```
 
 Optional slower but stricter check that opens every image:
 
 ```bash
-python -m src.training.preprocess --link-mode symlink --verify-images
+uv run python -m src.training.preprocess --link-mode symlink --verify-images
 ```
 
 Optional anti-spoofing crop extraction using RetinaFace:
 
 ```bash
-python -m src.training.preprocess --link-mode symlink --include-antispoof
+uv run python -m src.training.preprocess --link-mode symlink --include-antispoof
 ```
 
 Debug/smoke-test preprocessing:
 
 ```bash
-python -m src.training.preprocess --link-mode symlink --max-samples 100
+uv run python -m src.training.preprocess --link-mode symlink --max-samples 100
 ```
 
 Generated layout:
@@ -139,13 +139,13 @@ Full training follows the pre-decided pipeline:
 Run:
 
 ```bash
-python -m src.training.train_baseline
+uv run python -m src.training.train_baseline
 ```
 
 Useful GPU command (NVIDIA):
 
 ```bash
-python -m src.training.train_baseline \
+uv run python -m src.training.train_baseline \
     --device cuda \
     --batch-size 64 \
     --num-workers 8 \
@@ -158,7 +158,7 @@ Apple Silicon (M1/M2/M3 Pro) optimized command:
 *Note: The codebase now natively detects your M3 Pro and activates the `mps` (Metal Performance Shaders) backend for PyTorch. It also automatically hardware-accelerates InsightFace via the `CoreMLExecutionProvider`. This guarantees maximum performance without passing complicated flags.*
 
 ```bash
-python -m src.training.train_baseline \
+uv run python -m src.training.train_baseline \
     --device auto \
     --batch-size 32 \
     --num-workers 4 \
@@ -170,7 +170,7 @@ python -m src.training.train_baseline \
 Quick smoke training:
 
 ```bash
-python -m src.training.train_baseline --run-name smoke --checkpoint artifacts/models/efficientnet_b0_smoke_best.pth --no-pretrained --max-train-samples 1000 --max-val-samples 300 --max-test-samples 300 --epochs-stage1 1 --epochs-stage2 1 --batch-size 16
+uv run python -m src.training.train_baseline --run-name smoke --checkpoint artifacts/models/efficientnet_b0_smoke_best.pth --no-pretrained --max-train-samples 1000 --max-val-samples 300 --max-test-samples 300 --epochs-stage1 1 --epochs-stage2 1 --batch-size 16
 ```
 
 Baseline outputs:
@@ -208,13 +208,13 @@ Metrics reported include:
 ## 6. Evaluate a trained checkpoint
 
 ```bash
-python -m src.training.eval_deepfake --split test --threshold 0.5
+uv run python -m src.training.eval_deepfake --split test --threshold 0.5
 ```
 
 With a custom checkpoint:
 
 ```bash
-python -m src.training.eval_deepfake --checkpoint artifacts/models/efficientnet_b0_baseline_best.pth --split test
+uv run python -m src.training.eval_deepfake --checkpoint artifacts/models/efficientnet_b0_baseline_best.pth --split test
 ```
 
 ---
@@ -222,7 +222,7 @@ python -m src.training.eval_deepfake --checkpoint artifacts/models/efficientnet_
 ## 7. Tune ArcFace verification threshold on LFW
 
 ```bash
-python -m src.training.eval_verification
+uv run python -m src.training.eval_verification
 ```
 
 Outputs:
@@ -250,13 +250,13 @@ Metrics reported:
 After baseline training finishes:
 
 ```bash
-python -m src.training.train_lora --base-checkpoint artifacts/models/efficientnet_b0_baseline_best.pth
+uv run python -m src.training.train_lora --base-checkpoint artifacts/models/efficientnet_b0_baseline_best.pth
 ```
 
 Compare baseline vs LoRA:
 
 ```bash
-python -m src.training.compare
+uv run python -m src.training.compare
 ```
 
 Outputs:
@@ -274,13 +274,13 @@ artifacts/metrics/baseline_vs_lora.md
 Enroll from images:
 
 ```bash
-python -m src.enrollment.enroll --user-id alice --images path/to/img1.jpg path/to/img2.jpg path/to/img3.jpg
+uv run python -m src.enrollment.enroll --user-id alice --images path/to/img1.jpg path/to/img2.jpg path/to/img3.jpg
 ```
 
 Enroll interactively from webcam:
 
 ```bash
-python -m src.enrollment.enroll --user-id alice --webcam --camera 0 --samples 10
+uv run python -m src.enrollment.enroll --user-id alice --webcam --camera 0 --samples 10
 ```
 
 Enrollment DB:
@@ -296,13 +296,13 @@ artifacts/models/enrollment_db.pkl
 Image input:
 
 ```bash
-python -m src.inference.pipeline --user-id alice --image path/to/test.jpg
+uv run python -m src.inference.pipeline --user-id alice --image path/to/test.jpg
 ```
 
 Webcam demo:
 
 ```bash
-python -m src.inference.pipeline --user-id alice --camera 0
+uv run python -m src.inference.pipeline --user-id alice --camera 0
 ```
 
 Decision values:
@@ -319,7 +319,7 @@ Decision values:
 Connect two webcams and run:
 
 ```bash
-python -m src.inference.dual_pipeline --user-id alice --left-camera 0 --right-camera 1
+uv run python -m src.inference.dual_pipeline --user-id alice --left-camera 0 --right-camera 1
 ```
 
 Configured in `configs/pipeline.yaml`:
@@ -340,16 +340,16 @@ dual_camera:
 ## 12. Recommended final project run order
 
 ```bash
-python -m src.training.check_dataset
-python -m src.training.preprocess --link-mode symlink
-python -m src.training.train_baseline --device auto
-python -m src.training.eval_deepfake --split test
-python -m src.training.eval_verification
-python -m src.training.train_lora
-python -m src.training.compare
-python -m src.enrollment.enroll --user-id alice --webcam --samples 10
-python -m src.inference.pipeline --user-id alice --camera 0
-python -m src.inference.dual_pipeline --user-id alice --left-camera 0 --right-camera 1
+uv run python -m src.training.check_dataset
+uv run python -m src.training.preprocess --link-mode symlink
+uv run python -m src.training.train_baseline --device auto
+uv run python -m src.training.eval_deepfake --split test
+uv run python -m src.training.eval_verification
+uv run python -m src.training.train_lora
+uv run python -m src.training.compare
+uv run python -m src.enrollment.enroll --user-id alice --webcam --samples 10
+uv run python -m src.inference.pipeline --user-id alice --camera 0
+uv run python -m src.inference.dual_pipeline --user-id alice --left-camera 0 --right-camera 1
 ```
 
 Full training and ArcFace threshold tuning can take a long time depending on CPU/GPU. Use the smoke commands first to verify the pipeline, then run the full commands for final metrics.
