@@ -1,0 +1,115 @@
+{
+  "paths": {
+    "ffpp_faces": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/faceforensicspp/faces_224",
+      "exists": true
+    },
+    "ffpp_metadata": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/faceforensicspp/metadata.csv",
+      "exists": true
+    },
+    "140k_base": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/celebdf/real_vs_fake/real-vs-fake",
+      "exists": true
+    },
+    "ciplab_base": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/celebdf/real_and_fake_face",
+      "exists": true
+    },
+    "anti_spoof": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/custom/single_cam",
+      "exists": true
+    },
+    "lfw_dir": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/lfw/lfw",
+      "exists": true
+    },
+    "lfw_pairs": {
+      "path": "/Users/abc/Desktop/dual-camera-face-verification/data/raw/lfw/pairs.txt",
+      "exists": true
+    }
+  },
+  "counts": {
+    "ffpp_images": 95634,
+    "ffpp_metadata": {
+      "exists": true,
+      "rows": 95634,
+      "columns": [
+        "videoname",
+        "original_width",
+        "original_height",
+        "label",
+        "original"
+      ],
+      "label_counts": {
+        "FAKE": 79341,
+        "REAL": 16293
+      }
+    },
+    "140k_images_total": 140000,
+    "140k_splits": {
+      "train/real": 50000,
+      "train/fake": 50000,
+      "valid/real": 10000,
+      "valid/fake": 10000,
+      "test/real": 10000,
+      "test/fake": 10000
+    },
+    "ciplab": {
+      "training_real": 1081,
+      "training_fake": 960
+    },
+    "anti_spoof_videos": 36,
+    "anti_spoof_images": 9,
+    "anti_spoof_by_dir": {
+      "cut-out printouts": {
+        "images": 0,
+        "videos": 9
+      },
+      "live_selfie": {
+        "images": 9,
+        "videos": 0
+      },
+      "live_video": {
+        "images": 0,
+        "videos": 9
+      },
+      "printouts": {
+        "images": 0,
+        "videos": 9
+      },
+      "replay": {
+        "images": 0,
+        "videos": 9
+      }
+    },
+    "lfw_images": 13233,
+    "lfw_pairs_lines": 6001
+  },
+  "status": {
+    "raw_dataset_complete": true,
+    "processed_dataset_ready": true
+  },
+  "generated_artifacts": {
+    "processed_images": 237675,
+    "manifest": {
+      "exists": true,
+      "rows": 237675,
+      "columns": [
+        "sample_id",
+        "image_path",
+        "label",
+        "source_dataset",
+        "original_video",
+        "subject_id",
+        "split",
+        "face_confidence",
+        "crop_quality_status"
+      ],
+      "label_counts": {
+        "1": 150301,
+        "0": 87374
+      }
+    }
+  }
+}
