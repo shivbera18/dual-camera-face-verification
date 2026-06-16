@@ -142,17 +142,30 @@ Run:
 python -m src.training.train_baseline
 ```
 
-Useful GPU command:
+Useful GPU command (NVIDIA):
 
 ```bash
-python -m src.training.train_baseline --device cuda --batch-size 64 --num-workers 8
+python -m src.training.train_baseline \
+    --device cuda \
+    --batch-size 64 \
+    --num-workers 8 \
+    --epochs-stage1 5 \
+    --epochs-stage2 15
 ```
 
-Apple Silicon / CPU command:
+Apple Silicon (M1/M2/M3 Pro) optimized command:
+
+*Note: The codebase now natively detects your M3 Pro and activates the `mps` (Metal Performance Shaders) backend for PyTorch. It also automatically hardware-accelerates InsightFace via the `CoreMLExecutionProvider`. This guarantees maximum performance without passing complicated flags.*
 
 ```bash
-python -m src.training.train_baseline --device auto --batch-size 16 --num-workers 2
+python -m src.training.train_baseline \
+    --device auto \
+    --batch-size 32 \
+    --num-workers 4 \
+    --epochs-stage1 5 \
+    --epochs-stage2 15
 ```
+*(The learning rate scheduler bug has been fixed, so `--epochs-stage1 5` will now correctly decay the learning rate smoothly over exactly 5 epochs before unfreezing the backbone).*
 
 Quick smoke training:
 
