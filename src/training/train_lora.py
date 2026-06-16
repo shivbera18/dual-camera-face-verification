@@ -1,134 +1,216 @@
-"""LoRA / adapter fine-tuning loop."""
 from __future__ import annotations
 
 import argparse
+import json
 import time
-from pathlib import Path
+from typing import Any
 
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from src.models.efficientnet import build_classifier
+from src.models.efficientnet import DeepfakeClassifier, load_deepfake_checkpoint
 from src.models.lora import count_trainable_params, inject_lora
 from src.training.augmentation import get_train_transform, get_val_transform
-from src.training.dataset import DeepfakeDataset
+from src.training.dataset import DeepfakeDataset, make_weighted_sampler
 from src.training.evaluate import evaluate_classifier, save_report
-from src.utils.config import get_dataset_config, resolve
+from src.training.train_baseline import (
+    EarlyStopping,
+    get_device,
+    train_one_epoch,
+    validate,
+)
+from src.utils.config import get_dataset_config, get_model_config, resolve_project_path
 from src.utils.logger import get_logger
 
-logger = get_logger(__name__)
+LOGGER = get_logger(__name__)
 
 
-def _make_loaders(manifest: str, batch_size: int, num_workers: int) -> dict[str, DataLoader]:
-    train_ds = DeepfakeDataset(manifest, "train", transform=get_train_transform())
-    val_ds = DeepfakeDataset(manifest, "val", transform=get_val_transform())
-    test_ds = DeepfakeDataset(manifest, "test", transform=get_val_transform())
-    common = dict(batch_size=batch_size, num_workers=num_workers, pin_memory=True)
-    return {
-        "train": DataLoader(train_ds, shuffle=True, drop_last=True, **common),
-        "val": DataLoader(val_ds, shuffle=False, **common),
-        "test": DataLoader(test_ds, shuffle=False, **common),
-    }
-
-
-def _train_one_epoch(
-    model: nn.Module,
-    loader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    criterion: nn.Module,
-    device: torch.device,
-) -> float:
-    model.train()
-    total = 0.0
-    n = 0
-    for x, y in loader:
-        x = x.to(device, non_blocking=True)
-        y = y.float().to(device, non_blocking=True)
-        optimizer.zero_grad()
-        out = model(x)
-        loss = criterion(out, y)
-        loss.backward()
-        optimizer.step()
-        total += float(loss.item()) * x.size(0)
-        n += x.size(0)
-    return total / max(n, 1)
-
-
-def train_lora(args: argparse.Namespace) -> None:
-    cfg_ds = get_dataset_config()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loaders = _make_loaders(cfg_ds["splits"]["manifest"], args.batch_size, args.num_workers)
-    model = build_classifier(
-        checkpoint=args.baseline_checkpoint,
-        pretrained=False,
-        freeze_backbone=True,
-        device=device,
+def load_lora_model(
+    checkpoint_path: str, device: torch.device
+) -> tuple[torch.nn.Module, dict[str, Any]]:
+    ckpt = torch.load(resolve_project_path(checkpoint_path), map_location=device)
+    base = DeepfakeClassifier(pretrained=False)
+    base.load_state_dict(ckpt["base_model_state"])
+    cfg = ckpt.get("lora_config", {})
+    model = inject_lora(
+        base,
+        rank=int(cfg.get("rank", 4)),
+        alpha=float(cfg.get("alpha", 1.0)),
+        target_keywords=tuple(cfg.get("target_keywords", ["classifier.1"])),
+        include_conv=bool(cfg.get("include_conv", False)),
     )
-    model = inject_lora(model, rank=args.rank, alpha=args.alpha)
-    trainable = count_trainable_params(model)
-    logger.info("lora trainable params: %d", trainable)
-    optimizer = torch.optim.Adam(
-        [p for p in model.parameters() if p.requires_grad], lr=args.lr
+    model.load_state_dict(ckpt["model_state"])
+    model.to(device).eval()
+    return model, ckpt
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="LoRA fine-tune EfficientNet-B0 baseline."
+    )
+    parser.add_argument("--base-checkpoint", default=None)
+    parser.add_argument(
+        "--output", default="artifacts/models/efficientnet_b0_lora_best.pth"
+    )
+    parser.add_argument("--manifest", default=None)
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--rank", type=int, default=4)
+    parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument("--include-conv", action="store_true")
+    parser.add_argument("--target-keywords", nargs="+", default=["classifier.1"])
+    parser.add_argument("--max-train-samples", type=int, default=None)
+    parser.add_argument("--max-val-samples", type=int, default=None)
+    parser.add_argument("--max-test-samples", type=int, default=None)
+    args = parser.parse_args()
+
+    dataset_cfg = get_dataset_config()
+    model_cfg = get_model_config()["efficientnet"]
+    device = get_device(args.device)
+    base_checkpoint = resolve_project_path(
+        args.base_checkpoint or model_cfg["checkpoint"]
+    )
+    base_model, base_meta = load_deepfake_checkpoint(
+        base_checkpoint, device=device, pretrained=False
+    )
+    lora_cfg = {
+        "rank": args.rank,
+        "alpha": args.alpha,
+        "target_keywords": args.target_keywords,
+        "include_conv": args.include_conv,
+    }
+    model = inject_lora(
+        base_model,
+        rank=args.rank,
+        alpha=args.alpha,
+        target_keywords=tuple(args.target_keywords),
+        include_conv=args.include_conv,
+    ).to(device)
+    LOGGER.info("LoRA trainable params: %d", count_trainable_params(model))
+
+    manifest = resolve_project_path(args.manifest or dataset_cfg["splits"]["manifest"])
+    batch_size = int(args.batch_size or model_cfg["batch_size"])
+    train_ds = DeepfakeDataset(
+        manifest, "train", get_train_transform(), max_samples=args.max_train_samples
+    )
+    val_ds = DeepfakeDataset(
+        manifest, "val", get_val_transform(), max_samples=args.max_val_samples
+    )
+    test_ds = DeepfakeDataset(
+        manifest, "test", get_val_transform(), max_samples=args.max_test_samples
+    )
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        sampler=make_weighted_sampler(train_ds),
+        num_workers=args.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=True,
+        persistent_workers=args.num_workers > 0,
+    )
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=args.num_workers > 0,
+    )
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=args.num_workers > 0,
+    )
+
+    optimizer = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad],
+        lr=args.lr,
+        weight_decay=1e-4,
+    )
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=args.lr,
+        total_steps=max(1, args.epochs * len(train_loader)),
+        pct_start=0.1,
     )
     criterion = nn.BCEWithLogitsLoss()
-    best_auc = -1.0
-    best_state = None
-    bad_epochs = 0
-    ckpt_path = resolve("artifacts/models/efficientnet_b0_lora_best.pth")
-    ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-    for epoch in range(args.epochs):
-        t0 = time.time()
-        train_loss = _train_one_epoch(model, loaders["train"], optimizer, criterion, device)
-        val_metrics = evaluate_classifier(model, loaders["val"], threshold=0.5, device=device)
-        elapsed = time.time() - t0
-        logger.info(
-            "lora epoch=%d loss=%.4f val_auc=%.4f val_f1=%.4f t=%.1fs",
-            epoch + 1, train_loss, val_metrics["roc_auc"], val_metrics["f1"], elapsed,
+    scaler = torch.cuda.amp.GradScaler() if device.type == "cuda" else None
+    early = EarlyStopping(patience=3)
+    best_auc = -float("inf")
+    history: list[dict[str, Any]] = []
+    output = resolve_project_path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    for epoch in range(1, args.epochs + 1):
+        start = time.perf_counter()
+        tr = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, scaler, scheduler
         )
-        if val_metrics["roc_auc"] > best_auc:
-            best_auc = val_metrics["roc_auc"]
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-            bad_epochs = 0
-        else:
-            bad_epochs += 1
-            if bad_epochs >= args.patience:
-                break
-    if best_state is not None:
-        model.load_state_dict(best_state)
-    torch.save(
-        {
-            "epoch": args.epochs,
-            "val_auc": best_auc,
-            "model_state": model.state_dict(),
-            "config": {"rank": args.rank, "alpha": args.alpha},
-            "trainable_params": trainable,
-        },
-        ckpt_path,
+        va = validate(model, val_loader, criterion, device)
+        row = {
+            "epoch": epoch,
+            "train_loss": tr["loss"],
+            "train_auc": tr["auc"],
+            "val_loss": va["loss"],
+            "val_auc": va["auc"],
+            "val_f1": va["f1"],
+            "time_s": time.perf_counter() - start,
+        }
+        history.append(row)
+        LOGGER.info(
+            "lora epoch=%d train_auc=%.4f val_auc=%.4f val_f1=%.4f",
+            epoch,
+            tr["auc"],
+            va["auc"],
+            va["f1"],
+        )
+        if va["auc"] > best_auc:
+            best_auc = va["auc"]
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state": model.state_dict(),
+                    "base_model_state": base_model.state_dict(),
+                    "base_checkpoint": str(base_checkpoint),
+                    "val_auc": va["auc"],
+                    "val_metrics": va,
+                    "lora_config": lora_cfg,
+                },
+                output,
+            )
+        if early(va["auc"]):
+            break
+
+    pd.DataFrame(history).to_csv(
+        resolve_project_path("artifacts/metrics/lora_training_history.csv"), index=False
     )
-    test_metrics = evaluate_classifier(model, loaders["test"], threshold=0.5, device=device)
+    best_model, _ = load_lora_model(str(output), device)
+    test_report = evaluate_classifier(
+        best_model,
+        test_loader,
+        device,
+        threshold=0.5,
+        artifact_prefix="artifacts/metrics/lora_test",
+    )
     report = {
-        "best_val_auc": best_auc,
-        "test": test_metrics,
-        "trainable_params": trainable,
-        "checkpoint": str(ckpt_path),
+        "best_val_auc": float(best_auc),
+        "checkpoint": str(output),
+        "trainable_params": count_trainable_params(best_model),
+        "test": test_report,
+        "history": history,
     }
     save_report(report, "artifacts/metrics/lora_report.json")
-    logger.info("DONE lora test_auc=%.4f test_f1=%.4f", test_metrics["roc_auc"], test_metrics["f1"])
-
-
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser()
-    p.add_argument("--baseline_checkpoint", type=str, default="artifacts/models/efficientnet_b0_baseline_best.pth")
-    p.add_argument("--rank", type=int, default=4)
-    p.add_argument("--alpha", type=float, default=None)
-    p.add_argument("--lr", type=float, default=1e-4)
-    p.add_argument("--epochs", type=int, default=10)
-    p.add_argument("--patience", type=int, default=5)
-    p.add_argument("--batch_size", type=int, default=32)
-    p.add_argument("--num_workers", type=int, default=2)
-    return p.parse_args()
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
-    train_lora(parse_args())
+    main()

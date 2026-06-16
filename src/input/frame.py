@@ -1,4 +1,3 @@
-"""Frame dataclass for synchronized dual-camera capture."""
 from __future__ import annotations
 
 from dataclasses import dataclass

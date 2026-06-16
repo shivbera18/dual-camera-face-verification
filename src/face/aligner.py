@@ -1,15 +1,14 @@
-"""Face alignment + preprocessing for EfficientNet and ArcFace."""
 from __future__ import annotations
-
-from typing import Tuple
 
 import cv2
 import numpy as np
 import torch
 
-from src.utils.config import get_model_config
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-_ARCFACE_REF = np.array(
+# InsightFace 5-point landmark template for 112x112 crops.
+_ARCFACE_REF_112 = np.array(
     [
         [38.2946, 51.6963],
         [73.5318, 51.5014],
@@ -20,62 +19,50 @@ _ARCFACE_REF = np.array(
     dtype=np.float32,
 )
 
-_IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-
-
-def _get_output_size() -> Tuple[int, int]:
-    cfg = get_model_config().get("retinaface", {}).get("align_output_size", [224, 224])
-    return int(cfg[0]), int(cfg[1])
-
 
 def align_face(
-    img: np.ndarray,
-    landmarks: np.ndarray,
-    output_size: Tuple[int, int] | None = None,
+    img: np.ndarray, landmarks: np.ndarray, output_size: tuple[int, int] = (224, 224)
 ) -> np.ndarray:
-    if img is None or landmarks is None or landmarks.shape != (5, 2):
-        raise ValueError("align_face requires 5x2 landmarks")
-    if output_size is None:
-        output_size = _get_output_size()
-    ref = _ARCFACE_REF.copy()
-    ref[:, 0] *= output_size[0] / 112.0
-    ref[:, 1] *= output_size[1] / 112.0
-    transform = cv2.estimateAffinePartial2D(
-        landmarks.astype(np.float32), ref, method=cv2.LMEDS
-    )[0]
-    if transform is None:
-        raise RuntimeError("Failed to estimate alignment transform")
-    aligned = cv2.warpAffine(
-        img, transform, output_size, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101
+    """Align a BGR face crop using 5 landmarks and return BGR uint8 output."""
+    if landmarks.shape != (5, 2):
+        raise ValueError(f"Expected landmarks with shape (5, 2), got {landmarks.shape}")
+    out_w, out_h = output_size[0], output_size[1]
+    scale_x = out_w / 112.0
+    scale_y = out_h / 112.0
+    dst = _ARCFACE_REF_112.copy()
+    dst[:, 0] *= scale_x
+    dst[:, 1] *= scale_y
+    matrix, _ = cv2.estimateAffinePartial2D(
+        landmarks.astype(np.float32), dst, method=cv2.LMEDS
     )
-    return aligned
+    if matrix is None:
+        x1, y1 = np.maximum(landmarks.min(axis=0) - 40, 0).astype(int)
+        x2, y2 = np.minimum(
+            landmarks.max(axis=0) + 40, [img.shape[1], img.shape[0]]
+        ).astype(int)
+        crop = img[y1:y2, x1:x2]
+        if crop.size == 0:
+            raise ValueError("Could not align face and fallback crop is empty")
+        return cv2.resize(crop, output_size, interpolation=cv2.INTER_AREA)
+    aligned = cv2.warpAffine(
+        img,
+        matrix,
+        output_size,
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REFLECT_101,
+    )
+    return aligned.astype(np.uint8)
 
 
 def preprocess_for_efficientnet(crop: np.ndarray) -> torch.Tensor:
-    if crop is None:
-        raise ValueError("crop is None")
-    if crop.shape[2] == 3:
-        rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-    else:
-        rgb = crop
-    arr = rgb.astype(np.float32) / 255.0
-    arr = (arr - _IMAGENET_MEAN) / _IMAGENET_STD
-    arr = np.transpose(arr, (2, 0, 1))
-    tensor = torch.from_numpy(arr).unsqueeze(0).contiguous()
+    """Normalize a BGR crop to an EfficientNet tensor with shape [1, 3, 224, 224]."""
+    resized = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_AREA)
+    rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    rgb = (rgb - IMAGENET_MEAN) / IMAGENET_STD
+    tensor = torch.from_numpy(rgb.transpose(2, 0, 1)).float().unsqueeze(0)
     return tensor
 
 
 def preprocess_for_arcface(crop: np.ndarray) -> np.ndarray:
-    if crop is None:
-        raise ValueError("crop is None")
-    if crop.shape[0] != 112 or crop.shape[1] != 112:
-        crop = cv2.resize(crop, (112, 112), interpolation=cv2.INTER_LINEAR)
-    if crop.shape[2] == 3:
-        bgr = crop
-    else:
-        bgr = cv2.cvtColor(crop, cv2.COLOR_RGB2BGR)
-    arr = bgr.astype(np.float32)
-    arr = (arr - 127.5) / 127.5
-    arr = np.transpose(arr, (2, 0, 1))
-    return np.ascontiguousarray(arr)
+    """Return a 112x112 BGR crop suitable for InsightFace ArcFace extraction."""
+    return cv2.resize(crop, (112, 112), interpolation=cv2.INTER_AREA).astype(np.uint8)

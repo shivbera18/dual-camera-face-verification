@@ -1,16 +1,14 @@
-"""Build the deepfake_manifest.csv from the processed dataset layout."""
 from __future__ import annotations
 
+import argparse
 import csv
-import hashlib
 from pathlib import Path
-from typing import Iterable
 
-from src.utils.config import get_dataset_config, resolve
-from src.utils.logger import get_logger
+from tqdm import tqdm
 
-logger = get_logger(__name__)
+from src.utils.config import get_dataset_config, resolve_project_path
 
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 MANIFEST_COLUMNS = [
     "sample_id",
     "image_path",
@@ -24,55 +22,59 @@ MANIFEST_COLUMNS = [
 ]
 
 
-def _hash_id(path: Path) -> str:
-    return hashlib.md5(str(path).encode("utf-8")).hexdigest()[:12]
-
-
-def _iter_images(processed_dir: Path) -> Iterable[dict]:
-    for split in ("train", "val", "test"):
-        for label_name, label_int in (("real", 0), ("fake", 1)):
-            sub = processed_dir / split / label_name
-            if not sub.exists():
+def build_manifest(
+    processed_dir: str | Path | None = None, save_path: str | Path | None = None
+) -> int:
+    cfg = get_dataset_config()
+    processed = resolve_project_path(
+        processed_dir or cfg["processed"]["deepfake_faces"]
+    )
+    output = resolve_project_path(save_path or cfg["splits"]["manifest"])
+    rows: list[dict[str, str | int | float]] = []
+    for split in ["train", "val", "test"]:
+        for label_name, label in [("real", 0), ("fake", 1)]:
+            folder = processed / split / label_name
+            if not folder.exists():
                 continue
-            for img_path in sorted(sub.iterdir()):
-                if not img_path.is_file():
+            for img_path in tqdm(
+                sorted(folder.rglob("*")), desc=f"manifest {split}/{label_name}"
+            ):
+                if not img_path.is_file() or img_path.suffix.lower() not in IMAGE_EXTS:
                     continue
-                rel = img_path.relative_to(resolve("data"))
-                yield {
-                    "sample_id": _hash_id(img_path),
-                    "image_path": str(rel),
-                    "label": label_int,
-                    "split": split,
-                    "source_dataset": "deepfake_faces",
-                    "original_video": "",
-                    "subject_id": "",
-                    "face_confidence": 1.0,
-                    "crop_quality_status": "ok",
-                }
-
-
-def build_manifest(processed_dir: str | Path, manifest_path: str | Path) -> int:
-    processed_dir = resolve(processed_dir)
-    manifest_path = resolve(manifest_path)
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    count = 0
-    with manifest_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=MANIFEST_COLUMNS)
+                stem = img_path.stem
+                source = stem.split("_", 1)[0]
+                rows.append(
+                    {
+                        "sample_id": stem,
+                        "image_path": str(
+                            img_path.relative_to(resolve_project_path("."))
+                        ),
+                        "label": label,
+                        "source_dataset": source,
+                        "original_video": "",
+                        "subject_id": "",
+                        "split": split,
+                        "face_confidence": 1.0,
+                        "crop_quality_status": "ok",
+                    }
+                )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=MANIFEST_COLUMNS)
         writer.writeheader()
-        for row in _iter_images(processed_dir):
-            writer.writerow(row)
-            count += 1
-    logger.info("manifest written: %s rows=%d", manifest_path, count)
-    return count
+        writer.writerows(rows)
+    return len(rows)
 
 
 def main() -> None:
-    ds = get_dataset_config()
-    n = build_manifest(
-        processed_dir=ds["processed"]["deepfake_faces"],
-        manifest_path=ds["splits"]["manifest"],
+    parser = argparse.ArgumentParser(
+        description="Build a manifest by walking processed deepfake_faces folders."
     )
-    print(f"manifest rows: {n}")
+    parser.add_argument("--processed-dir", default=None)
+    parser.add_argument("--save-path", default=None)
+    args = parser.parse_args()
+    count = build_manifest(args.processed_dir, args.save_path)
+    print(f"Wrote {count} rows")
 
 
 if __name__ == "__main__":

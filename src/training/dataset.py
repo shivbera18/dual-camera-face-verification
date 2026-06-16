@@ -1,53 +1,86 @@
-"""PyTorch Dataset backed by the deepfake manifest."""
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import cv2
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, WeightedRandomSampler
 
-from src.utils.config import resolve
+from src.training.augmentation import get_val_transform
+from src.utils.config import resolve_project_path
+
+MANIFEST_DTYPES = {
+    "sample_id": "string",
+    "image_path": "string",
+    "source_dataset": "string",
+    "original_video": "string",
+    "subject_id": "string",
+    "split": "string",
+}
 
 
-class DeepfakeDataset(Dataset):
+class DeepfakeDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    """Manifest-backed dataset for binary real/fake face classification."""
+
     def __init__(
         self,
         manifest_csv: str | Path,
         split: str,
-        transform: Optional[object] = None,
+        transform: Any | None = None,
+        max_samples: int | None = None,
     ) -> None:
-        manifest_csv = resolve(manifest_csv)
-        if not manifest_csv.exists():
-            raise FileNotFoundError(f"manifest not found: {manifest_csv}")
-        df = pd.read_csv(manifest_csv)
-        df = df[df["split"] == split].reset_index(drop=True)
-        if df.empty:
-            raise ValueError(f"no rows for split={split} in {manifest_csv}")
-        self.df = df
-        self.transform = transform
-        self.data_root = resolve("data")
+        self.manifest_csv = resolve_project_path(manifest_csv)
+        if not self.manifest_csv.exists():
+            raise FileNotFoundError(f"Manifest not found: {self.manifest_csv}")
+        df = pd.read_csv(self.manifest_csv, dtype=MANIFEST_DTYPES, low_memory=False)
+        if (
+            "split" not in df.columns
+            or "label" not in df.columns
+            or "image_path" not in df.columns
+        ):
+            raise ValueError(
+                "Manifest must include split, label, and image_path columns"
+            )
+        self.df = df[df["split"] == split].reset_index(drop=True)
+        if max_samples is not None:
+            self.df = self.df.sample(
+                n=min(max_samples, len(self.df)), random_state=42
+            ).reset_index(drop=True)
+        if self.df.empty:
+            raise ValueError(f"No rows for split={split} in {self.manifest_csv}")
+        self.transform = transform or get_val_transform()
 
     def __len__(self) -> int:
         return len(self.df)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         row = self.df.iloc[idx]
-        rel = row["image_path"]
-        img_path = self.data_root / rel
-        if not img_path.exists():
-            raise FileNotFoundError(f"image missing: {img_path}")
-        img = cv2.imread(str(img_path))
+        path = resolve_project_path(str(row["image_path"]))
+        img = cv2.imread(str(path), cv2.IMREAD_COLOR)
         if img is None:
-            raise RuntimeError(f"failed to read image: {img_path}")
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            raise RuntimeError(f"Unreadable image: {path}")
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if self.transform is not None:
-            transformed = self.transform(image=img)
-            img = transformed["image"]
+            rgb = self.transform(image=rgb)["image"]
+        if isinstance(rgb, np.ndarray):
+            tensor = torch.from_numpy(rgb.transpose(2, 0, 1)).float()
         else:
-            img = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
-        label = int(row["label"])
-        return img, label
+            tensor = rgb.float()
+        label = torch.tensor(float(row["label"]), dtype=torch.float32)
+        return tensor, label
+
+    def labels(self) -> np.ndarray:
+        return self.df["label"].astype(int).to_numpy()
+
+
+def make_weighted_sampler(dataset: DeepfakeDataset) -> WeightedRandomSampler:
+    labels = dataset.labels()
+    counts = np.bincount(labels, minlength=2).astype(np.float64)
+    weights = 1.0 / np.maximum(counts, 1.0)
+    sample_weights = weights[labels]
+    return WeightedRandomSampler(
+        sample_weights.tolist(), num_samples=len(sample_weights), replacement=True
+    )

@@ -1,79 +1,67 @@
-"""EfficientNet-B0 deepfake classifier."""
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torchvision.models as tvm
-
-from src.utils.config import get_model_config, resolve
-from src.utils.logger import get_logger
-
-logger = get_logger(__name__)
+from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
 
 
 class DeepfakeClassifier(nn.Module):
-    def __init__(self, pretrained: bool = True, freeze_backbone: bool = True) -> None:
+    """EfficientNet-B0 with a binary real/fake head. Forward returns logits."""
+
+    def __init__(
+        self,
+        pretrained: bool = True,
+        dropout: float = 0.3,
+        freeze_backbone: bool = False,
+    ) -> None:
         super().__init__()
-        weights = tvm.EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
-        self.backbone = tvm.efficientnet_b0(weights=weights)
+        weights = EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
+        self.backbone = efficientnet_b0(weights=weights)
         in_features = self.backbone.classifier[1].in_features
         self.backbone.classifier = nn.Sequential(
-            nn.Dropout(p=0.2, inplace=True),
-            nn.Linear(in_features, 1),
+            nn.Dropout(p=dropout, inplace=True), nn.Linear(in_features, 1)
         )
         if freeze_backbone:
             self.freeze_backbone()
-        self._input_size = tuple(get_model_config()["efficientnet"]["input_size"][:2])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.backbone(x).squeeze(-1)
 
+    @torch.no_grad()
     def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
         return torch.sigmoid(self.forward(x))
 
-    @property
-    def input_size(self) -> tuple[int, int]:
-        return self._input_size
-
     def freeze_backbone(self) -> None:
         for name, param in self.backbone.named_parameters():
-            if not name.startswith("classifier"):
-                param.requires_grad = False
-        logger.info("backbone frozen")
+            param.requires_grad = name.startswith("classifier")
 
     def unfreeze_last_blocks(self, n: int = 3) -> None:
+        for param in self.backbone.classifier.parameters():
+            param.requires_grad = True
         blocks = list(self.backbone.features.children())
         for block in blocks[-n:]:
-            for p in block.parameters():
-                p.requires_grad = True
-        logger.info("unfroze last %d blocks", n)
+            for param in block.parameters():
+                param.requires_grad = True
 
-    def trainable_parameters(self) -> Iterable[nn.Parameter]:
-        return (p for p in self.parameters() if p.requires_grad)
-
-
-def _load_state_into(model: nn.Module, checkpoint: Union[str, Path], device) -> bool:
-    ckpt_path = resolve(checkpoint) if not Path(str(checkpoint)).is_absolute() else Path(str(checkpoint))
-    if not ckpt_path.exists():
-        return False
-    state = torch.load(ckpt_path, map_location=device)
-    if isinstance(state, dict) and "model_state" in state:
-        state = state["model_state"]
-    model.load_state_dict(state, strict=False)
-    logger.info("loaded checkpoint: %s", ckpt_path)
-    return True
+    def count_parameters(self, trainable_only: bool = True) -> int:
+        if trainable_only:
+            return sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return sum(p.numel() for p in self.parameters())
 
 
-def build_classifier(
-    checkpoint: Optional[Union[str, Path]] = None,
-    pretrained: bool = True,
-    freeze_backbone: bool = True,
-    device: Union[str, torch.device] = "cpu",
-) -> DeepfakeClassifier:
-    model = DeepfakeClassifier(pretrained=pretrained, freeze_backbone=freeze_backbone)
-    if checkpoint:
-        _load_state_into(model, checkpoint, device)
-    return model.to(device)
+def load_deepfake_checkpoint(
+    checkpoint_path: str | Path,
+    device: torch.device | str = "cpu",
+    pretrained: bool = False,
+) -> tuple[DeepfakeClassifier, dict[str, Any]]:
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model = DeepfakeClassifier(pretrained=pretrained)
+    state = checkpoint.get("model_state", checkpoint)
+    model.load_state_dict(state)
+    model.to(device)
+    model.eval()
+    metadata = checkpoint if isinstance(checkpoint, dict) else {}
+    return model, metadata

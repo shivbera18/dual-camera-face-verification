@@ -1,95 +1,92 @@
-"""LoRA adapters for parameter-efficient fine-tuning."""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Iterable, Optional, Union
+import math
+from copy import deepcopy
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models.efficientnet import DeepfakeClassifier, _load_state_into
-from src.utils.config import resolve
-from src.utils.logger import get_logger
-
-logger = get_logger(__name__)
-
 
 class LoRALinear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, rank: int = 4, alpha: Optional[float] = None) -> None:
+    """LoRA adapter for a frozen Linear layer."""
+
+    def __init__(self, base: nn.Linear, rank: int = 4, alpha: float = 1.0) -> None:
         super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
+        self.base = base
         self.rank = rank
-        if alpha is None:
-            alpha = float(rank)
         self.alpha = alpha
-        self.weight = nn.Parameter(torch.empty(out_features, in_features), requires_grad=False)
-        self.bias = nn.Parameter(torch.zeros(out_features), requires_grad=False)
-        nn.init.kaiming_uniform_(self.weight, a=5 ** 0.5)
-        self.A = nn.Parameter(torch.zeros(rank, in_features))
-        self.B = nn.Parameter(torch.zeros(out_features, rank))
-        nn.init.kaiming_uniform_(self.A, a=5 ** 0.5)
-        nn.init.zeros_(self.B)
-        self.scaling = alpha / max(rank, 1)
+        for param in self.base.parameters():
+            param.requires_grad = False
+        self.lora_a = nn.Parameter(torch.empty(rank, base.in_features))
+        self.lora_b = nn.Parameter(torch.zeros(base.out_features, rank))
+        nn.init.kaiming_uniform_(self.lora_a, a=math.sqrt(5))
+        self.scaling = alpha / rank
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        delta_w = (self.B @ self.A) * self.scaling
-        return F.linear(x, self.weight + delta_w, self.bias)
+        return (
+            self.base(x)
+            + F.linear(F.linear(x, self.lora_a), self.lora_b) * self.scaling
+        )
 
 
-def _is_target_module(name: str, target_modules: Iterable[str]) -> bool:
-    return any(name == t or name.endswith("." + t) or t in name for t in target_modules)
+class LoRAConv2d(nn.Module):
+    """Low-rank 1x1 adapter added in parallel to a frozen Conv2d layer."""
+
+    def __init__(self, base: nn.Conv2d, rank: int = 4, alpha: float = 1.0) -> None:
+        super().__init__()
+        self.base = base
+        self.rank = rank
+        self.alpha = alpha
+        for param in self.base.parameters():
+            param.requires_grad = False
+        self.down = nn.Conv2d(base.in_channels, rank, kernel_size=1, bias=False)
+        self.up = nn.Conv2d(rank, base.out_channels, kernel_size=1, bias=False)
+        nn.init.kaiming_uniform_(self.down.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.up.weight)
+        self.scaling = alpha / rank
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.base(x) + self.up(self.down(x)) * self.scaling
+
+
+def _replace_child(parent: nn.Module, child_name: str, module: nn.Module) -> None:
+    if child_name.isdigit() and isinstance(parent, (nn.Sequential, nn.ModuleList)):
+        parent[int(child_name)] = module
+    else:
+        setattr(parent, child_name, module)
 
 
 def inject_lora(
-    model: DeepfakeClassifier,
+    model: nn.Module,
     rank: int = 4,
-    alpha: Optional[float] = None,
-    target_modules: Iterable[str] = ("classifier.1",),
-) -> DeepfakeClassifier:
-    for p in model.parameters():
-        p.requires_grad = False
-    replaced = 0
-    for parent_name, parent in model.named_modules():
-        for child_name, child in list(parent.named_children()):
-            full_name = f"{parent_name}.{child_name}" if parent_name else child_name
-            if isinstance(child, nn.Linear) and _is_target_module(full_name, target_modules):
-                lora = LoRALinear(child.in_features, child.out_features, rank=rank, alpha=alpha)
-                lora.weight.data.copy_(child.weight.data)
-                if child.bias is not None:
-                    lora.bias.data.copy_(child.bias.data)
-                setattr(parent, child_name, lora)
-                replaced += 1
-    if replaced == 0:
-        logger.warning("inject_lora: no target modules matched %s", tuple(target_modules))
-    else:
-        logger.info("inject_lora: replaced %d Linear layer(s) rank=%d", replaced, rank)
-    return model
+    alpha: float = 1.0,
+    target_keywords: tuple[str, ...] = ("classifier.1",),
+    include_conv: bool = False,
+) -> nn.Module:
+    """Return a copy of model with LoRA injected into matching Linear/optional Conv2d layers."""
+    adapted = deepcopy(model)
+    for param in adapted.parameters():
+        param.requires_grad = False
 
-
-def build_lora_classifier(
-    checkpoint: Optional[Union[str, Path]] = None,
-    rank: int = 4,
-    alpha: Optional[float] = None,
-    target_modules: Iterable[str] = ("classifier.1",),
-    device: Union[str, torch.device] = "cpu",
-) -> DeepfakeClassifier:
-    """Build a DeepfakeClassifier with LoRA injected, THEN load checkpoint.
-
-    Critical ordering: injecting LoRA first means the saved state_dict's
-    `classifier.1.A` / `classifier.1.B` keys have a target to load into.
-    """
-    model = DeepfakeClassifier(pretrained=False, freeze_backbone=True)
-    model = inject_lora(model, rank=rank, alpha=alpha, target_modules=target_modules)
-    if checkpoint:
-        _load_state_into(model, checkpoint, device)
-    return model.to(device)
+    named_modules = dict(adapted.named_modules())
+    for full_name, module in list(named_modules.items()):
+        if not full_name or not any(key in full_name for key in target_keywords):
+            continue
+        parent_name, child_name = (
+            full_name.rsplit(".", 1) if "." in full_name else ("", full_name)
+        )
+        parent = adapted.get_submodule(parent_name) if parent_name else adapted
+        if isinstance(module, nn.Linear):
+            _replace_child(
+                parent, child_name, LoRALinear(module, rank=rank, alpha=alpha)
+            )
+        elif include_conv and isinstance(module, nn.Conv2d):
+            _replace_child(
+                parent, child_name, LoRAConv2d(module, rank=rank, alpha=alpha)
+            )
+    return adapted
 
 
 def count_trainable_params(model: nn.Module) -> int:
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-def count_total_params(model: nn.Module) -> int:
-    return sum(p.numel() for p in model.parameters())
+    return sum(param.numel() for param in model.parameters() if param.requires_grad)

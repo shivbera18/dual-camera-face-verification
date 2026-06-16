@@ -1,18 +1,15 @@
-"""Persistent enrollment database (one template per user)."""
 from __future__ import annotations
 
-import datetime as _dt
 import pickle
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import numpy as np
 
-from src.utils.config import get_model_config, resolve
-from src.utils.logger import get_logger
-
-logger = get_logger(__name__)
+from src.models.arcface import ArcFaceExtractor
+from src.utils.config import resolve_project_path
 
 
 @dataclass
@@ -22,77 +19,84 @@ class EnrollmentRecord:
     num_samples: int
     created_at: str
     model_name: str = "buffalo_l"
-    model_version: str = "insightface-1.0"
-    raw_embeddings: list[np.ndarray] = field(default_factory=list)
+    model_version: str = "insightface"
 
-    def to_dict(self) -> dict:
-        d = asdict(self)
-        d["embedding_template"] = self.embedding_template.tolist()
-        d["raw_embeddings"] = [e.tolist() for e in self.raw_embeddings]
-        return d
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "EnrollmentRecord":
-        return cls(
-            user_id=d["user_id"],
-            embedding_template=np.asarray(d["embedding_template"], dtype=np.float32),
-            num_samples=int(d.get("num_samples", 0)),
-            created_at=d.get("created_at", _dt.datetime.utcnow().isoformat()),
-            model_name=d.get("model_name", "buffalo_l"),
-            model_version=d.get("model_version", "insightface-1.0"),
-            raw_embeddings=[np.asarray(e, dtype=np.float32) for e in d.get("raw_embeddings", [])],
-        )
+    def to_serializable(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["embedding_template"] = self.embedding_template.astype(np.float32)
+        return data
 
 
 class EnrollmentStore:
-    def __init__(self, db_path: Optional[str | Path] = None) -> None:
-        cfg = get_model_config().get("arcface", {})
-        self.db_path = resolve(db_path or cfg.get("enrollment_db", "artifacts/models/enrollment_db.pkl"))
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self, db_path: str | Path = "artifacts/models/enrollment_db.pkl"
+    ) -> None:
+        self.db_path = resolve_project_path(db_path)
         self.records: dict[str, EnrollmentRecord] = {}
-        if self.db_path.exists():
-            self.load()
+        self.load()
 
-    def enroll(self, user_id: str, embeddings: list[np.ndarray]) -> EnrollmentRecord:
+    def enroll(
+        self, user_id: str, embeddings: list[np.ndarray], model_name: str = "buffalo_l"
+    ) -> EnrollmentRecord:
         if not embeddings:
-            raise ValueError("no embeddings provided")
-        arr = np.stack([np.asarray(e, dtype=np.float32) for e in embeddings], axis=0)
-        template = arr.mean(axis=0)
+            raise ValueError("At least one embedding is required for enrollment")
+        stacked = np.stack(
+            [emb / (np.linalg.norm(emb) + 1e-12) for emb in embeddings]
+        ).astype(np.float32)
+        template = stacked.mean(axis=0)
         template = template / (np.linalg.norm(template) + 1e-12)
         record = EnrollmentRecord(
             user_id=user_id,
-            embedding_template=template.astype(np.float32),
-            num_samples=int(arr.shape[0]),
-            created_at=_dt.datetime.utcnow().isoformat(),
-            raw_embeddings=[e.astype(np.float32) for e in embeddings],
+            embedding_template=template,
+            num_samples=len(embeddings),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            model_name=model_name,
         )
         self.records[user_id] = record
         self.save()
-        logger.info("enrolled user_id=%s n_samples=%d", user_id, record.num_samples)
         return record
 
-    def get_template(self, user_id: str) -> Optional[np.ndarray]:
-        rec = self.records.get(user_id)
-        return None if rec is None else rec.embedding_template
+    def get_template(self, user_id: str) -> np.ndarray | None:
+        record = self.records.get(user_id)
+        return None if record is None else record.embedding_template
 
     def list_users(self) -> list[str]:
         return sorted(self.records.keys())
 
-    def delete_user(self, user_id: str) -> bool:
-        if user_id in self.records:
-            del self.records[user_id]
-            self.save()
-            return True
-        return False
+    def delete_user(self, user_id: str) -> None:
+        self.records.pop(user_id, None)
+        self.save()
+
+    def verify(self, user_id: str, embedding: np.ndarray) -> float | None:
+        template = self.get_template(user_id)
+        if template is None:
+            return None
+        return ArcFaceExtractor.similarity(template, embedding)
 
     def save(self) -> None:
-        payload = {uid: rec.to_dict() for uid, rec in self.records.items()}
-        with self.db_path.open("wb") as f:
-            pickle.dump(payload, f)
-        logger.info("enrollment db saved: %s users=%d", self.db_path, len(self.records))
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.db_path.open("wb") as fh:
+            pickle.dump(
+                {uid: record.to_serializable() for uid, record in self.records.items()},
+                fh,
+            )
 
     def load(self) -> None:
-        with self.db_path.open("rb") as f:
-            payload = pickle.load(f)
-        self.records = {uid: EnrollmentRecord.from_dict(d) for uid, d in payload.items()}
-        logger.info("enrollment db loaded: %s users=%d", self.db_path, len(self.records))
+        if not self.db_path.exists():
+            self.records = {}
+            return
+        with self.db_path.open("rb") as fh:
+            raw = pickle.load(fh)
+        self.records = {
+            uid: EnrollmentRecord(
+                user_id=data["user_id"],
+                embedding_template=np.asarray(
+                    data["embedding_template"], dtype=np.float32
+                ),
+                num_samples=int(data["num_samples"]),
+                created_at=data["created_at"],
+                model_name=data.get("model_name", "buffalo_l"),
+                model_version=data.get("model_version", "insightface"),
+            )
+            for uid, data in raw.items()
+        }

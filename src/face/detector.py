@@ -1,35 +1,36 @@
-"""RetinaFace wrapper around InsightFace's FaceAnalysis."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
-from insightface.app import FaceAnalysis
-
-from src.utils.config import get_model_config
-from src.utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class FaceResult:
     bbox: np.ndarray
     landmarks: np.ndarray
     confidence: float
-    area: float
 
-    def as_dict(self) -> dict:
-        return {
-            "bbox": self.bbox.tolist(),
-            "landmarks": self.landmarks.tolist(),
-            "confidence": float(self.confidence),
-            "area": float(self.area),
-        }
+    @property
+    def width(self) -> float:
+        return float(max(0.0, self.bbox[2] - self.bbox[0]))
+
+    @property
+    def height(self) -> float:
+        return float(max(0.0, self.bbox[3] - self.bbox[1]))
+
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+    @property
+    def face_size(self) -> int:
+        return int(min(self.width, self.height))
 
 
 class FaceDetector:
+    """RetinaFace wrapper via InsightFace FaceAnalysis."""
+
     def __init__(
         self,
         model_name: str = "buffalo_l",
@@ -37,55 +38,52 @@ class FaceDetector:
         min_confidence: float = 0.8,
         ctx_id: int = -1,
     ) -> None:
-        cfg = get_model_config().get("retinaface", {})
-        self.min_confidence = float(cfg.get("detection_threshold", min_confidence))
-        self.min_face_size = int(cfg.get("min_face_size", 40))
-        self.app = FaceAnalysis(name=model_name, allowed_modules=["detection"])
-        self.app.prepare(ctx_id=ctx_id, det_size=det_size)
-        logger.info(
-            "FaceDetector ready: model=%s det_size=%s min_conf=%.2f",
-            model_name, det_size, self.min_confidence,
-        )
+        from insightface.app import FaceAnalysis
 
-    def _to_result(self, face) -> Optional[FaceResult]:
-        bbox = np.asarray(face.bbox, dtype=np.float32)
-        x1, y1, x2, y2 = bbox
-        w, h = x2 - x1, y2 - y1
-        if min(w, h) < self.min_face_size:
-            return None
-        if face.det_score < self.min_confidence:
-            return None
-        landmarks = np.asarray(face.kps, dtype=np.float32)
-        if landmarks.shape != (5, 2):
-            return None
-        return FaceResult(
-            bbox=bbox,
-            landmarks=landmarks,
-            confidence=float(face.det_score),
-            area=float(w * h),
+        self.model_name = model_name
+        self.det_size = det_size
+        self.min_confidence = min_confidence
+        self.app = FaceAnalysis(
+            name=model_name, providers=["CPUExecutionProvider"] if ctx_id < 0 else None
         )
+        self.app.prepare(ctx_id=ctx_id, det_size=det_size)
 
     def detect(self, img: np.ndarray) -> list[FaceResult]:
-        if img is None or img.size == 0:
-            return []
+        """Return detected faces sorted by area descending."""
         faces = self.app.get(img)
-        results = [self._to_result(f) for f in faces]
-        results = [r for r in results if r is not None]
-        results.sort(key=lambda r: r.area, reverse=True)
-        return results
+        results: list[FaceResult] = []
+        for face in faces:
+            score = float(getattr(face, "det_score", 0.0))
+            if score < self.min_confidence:
+                continue
+            bbox = np.asarray(face.bbox, dtype=np.float32)
+            landmarks = np.asarray(face.kps, dtype=np.float32)
+            if bbox.shape != (4,) or landmarks.shape != (5, 2):
+                continue
+            results.append(FaceResult(bbox=bbox, landmarks=landmarks, confidence=score))
+        return sorted(results, key=lambda f: f.area, reverse=True)
 
-    def detect_best(self, img: np.ndarray) -> Optional[FaceResult]:
-        results = self.detect(img)
-        if not results:
+    def detect_best(self, img: np.ndarray) -> FaceResult | None:
+        """Return the best face by size and closeness to image center."""
+        faces = self.detect(img)
+        if not faces:
             return None
-        if len(results) == 1:
-            return results[0]
         h, w = img.shape[:2]
-        cx, cy = w / 2.0, h / 2.0
-        def center_score(r: FaceResult) -> float:
-            bx1, by1, bx2, by2 = r.bbox
-            face_cx = (bx1 + bx2) / 2.0
-            face_cy = (by1 + by2) / 2.0
-            dist = ((face_cx - cx) ** 2 + (face_cy - cy) ** 2) ** 0.5
-            return r.area - dist * dist * 0.5
-        return max(results, key=center_score)
+        center = np.array([w / 2.0, h / 2.0], dtype=np.float32)
+        max_area = max(face.area for face in faces) or 1.0
+        max_dist = float(np.linalg.norm(center)) or 1.0
+
+        def score(face: FaceResult) -> float:
+            bbox_center = np.array(
+                [
+                    (face.bbox[0] + face.bbox[2]) / 2.0,
+                    (face.bbox[1] + face.bbox[3]) / 2.0,
+                ]
+            )
+            area_score = face.area / max_area
+            center_score = 1.0 - min(
+                1.0, float(np.linalg.norm(bbox_center - center)) / max_dist
+            )
+            return 0.75 * area_score + 0.25 * center_score
+
+        return max(faces, key=score)

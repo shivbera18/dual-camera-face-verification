@@ -1,28 +1,32 @@
-"""Colored console + rotating file logger."""
 from __future__ import annotations
 
 import logging
-import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
-import colorlog
+try:
+    import colorlog
+except ImportError:  # pragma: no cover - fallback for minimal environments
+    colorlog = None
 
-from src.utils.config import REPO_ROOT
+from src.utils.config import resolve_project_path
+
+_LOGGERS: dict[str, logging.Logger] = {}
 
 
-_DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
-_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+def get_logger(name: str, log_file: str | Path | None = None, level: str | int = "INFO") -> logging.Logger:
+    """Return a configured logger with console and optional rotating file output."""
+    if name in _LOGGERS:
+        return _LOGGERS[name]
 
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.propagate = False
 
-def _build_console_handler(level: int) -> logging.Handler:
-    handler = colorlog.StreamHandler(stream=sys.stdout)
-    handler.setLevel(level)
-    handler.setFormatter(
-        colorlog.ColoredFormatter(
-            fmt="%(log_color)s" + _DEFAULT_FORMAT,
-            datefmt=_DATE_FORMAT,
+    if colorlog is not None:
+        console_formatter: logging.Formatter = colorlog.ColoredFormatter(
+            "%(log_color)s[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
             log_colors={
                 "DEBUG": "cyan",
                 "INFO": "green",
@@ -31,34 +35,30 @@ def _build_console_handler(level: int) -> logging.Handler:
                 "CRITICAL": "bold_red",
             },
         )
-    )
-    return handler
+    else:
+        console_formatter = logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
+    console = logging.StreamHandler()
+    console.setFormatter(console_formatter)
+    logger.addHandler(console)
 
-def _build_file_handler(log_file: Path, level: int) -> logging.Handler:
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-    handler = RotatingFileHandler(
-        log_file, maxBytes=10 * 1024 * 1024, backupCount=5
-    )
-    handler.setLevel(level)
-    handler.setFormatter(logging.Formatter(_DEFAULT_FORMAT, datefmt=_DATE_FORMAT))
-    return handler
-
-
-def get_logger(
-    name: str,
-    log_file: Optional[str | Path] = None,
-    level: int = logging.INFO,
-) -> logging.Logger:
-    logger = logging.getLogger(name)
-    if logger.handlers:
-        return logger
-    logger.setLevel(level)
-    logger.propagate = False
-    logger.addHandler(_build_console_handler(level))
     if log_file is not None:
-        lf = Path(log_file)
-        if not lf.is_absolute():
-            lf = REPO_ROOT / lf
-        logger.addHandler(_build_file_handler(lf, level))
+        path = resolve_project_path(log_file)
+    else:
+        path = resolve_project_path("artifacts/logs") / f"{name.replace('.', '_')}.log"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_handler = RotatingFileHandler(path, maxBytes=5_000_000, backupCount=5)
+    file_handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logger.addHandler(file_handler)
+
+    _LOGGERS[name] = logger
     return logger
