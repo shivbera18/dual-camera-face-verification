@@ -1,0 +1,46 @@
+{
+  "metrics_at_threshold": {
+    "threshold": 0.5,
+    "accuracy": 0.9695995830799965,
+    "balanced_accuracy": 0.9683283012390111,
+    "precision": 0.9793188458729,
+    "recall": 0.9729227140783745,
+    "specificity": 0.9637338883996476,
+    "f1": 0.9761103021477976,
+    "false_positive_rate": 0.03626611160035225,
+    "false_negative_rate": 0.027077285921625543,
+    "false_positives": 453,
+    "false_negatives": 597,
+    "true_positives": 21451,
+    "true_negatives": 12038,
+    "support_real": 12491,
+    "support_fake": 22048,
+    "roc_auc": 0.9959309708795847,
+    "pr_auc": 0.9976392144546893
+  },
+  "best_f1_threshold": {
+    "threshold": 0.31,
+    "accuracy": 0.9703234025304728,
+    "balanced_accuracy": 0.965494444824657,
+    "precision": 0.9709242417454416,
+    "recall": 0.9829462989840348,
+    "specificity": 0.9480425906652789,
+    "f1": 0.9768982848385134,
+    "false_positive_rate": 0.05195740933472099,
+    "false_negative_rate": 0.017053701015965168,
+    "false_positives": 649,
+    "false_negatives": 376,
+    "true_positives": 21672,
+    "true_negatives": 11842,
+    "support_real": 12491,
+    "support_fake": 22048,
+    "roc_auc": 0.9959309708795847,
+    "pr_auc": 0.9976392144546893
+  },
+  "latency": {
+    "samples": 34539.0,
+    "latency_ms_mean_per_image": 0.34798684274159225,
+    "latency_ms_p50_per_image": 0.3145319062696217,
+    "latency_ms_p95_per_image": 0.3296867077722254
+  }
+}

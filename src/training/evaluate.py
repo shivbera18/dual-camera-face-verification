@@ -104,6 +104,28 @@ def plot_confusion_matrix(
     plt.close(fig)
 
 
+def plot_normalized_confusion_matrix(
+    labels: np.ndarray, probs: np.ndarray, threshold: float, save_path: str | Path
+) -> None:
+    preds = (probs >= threshold).astype(int)
+    cm = confusion_matrix(labels.astype(int), preds, labels=[0, 1], normalize="true")
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    im = ax.imshow(cm, cmap="Blues", vmin=0, vmax=1)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set_xticks([0, 1], labels=["pred_real", "pred_fake"])
+    ax.set_yticks([0, 1], labels=["true_real", "true_fake"])
+    ax.set_title(f"Normalized CM @ {threshold:.2f}")
+    for i in range(2):
+        for j in range(2):
+            color = "white" if cm[i, j] > 0.5 else "black"
+            ax.text(j, i, f"{cm[i, j]*100:.1f}%", ha="center", va="center", color=color)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def plot_roc_curve(
     labels: np.ndarray, probs: np.ndarray, save_path: str | Path
 ) -> None:
@@ -193,6 +215,47 @@ def plot_calibration_curve_diag(labels: np.ndarray, probs: np.ndarray, save_path
     plt.close(fig)
 
 
+def plot_threshold_sweep(labels: np.ndarray, probs: np.ndarray, save_path: str | Path) -> None:
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sweep = sweep_thresholds(labels, probs)
+    thresholds = [r["threshold"] for r in sweep]
+    f1s = [r["f1"] for r in sweep]
+    accs = [r["accuracy"] for r in sweep]
+    
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(thresholds, f1s, label="F1 Score", color="purple")
+    ax.plot(thresholds, accs, label="Accuracy", color="green")
+    ax.set_xlabel("Confidence Threshold")
+    ax.set_ylabel("Score")
+    ax.set_title("Metrics vs Threshold")
+    ax.legend(loc="lower center")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+def plot_latency_distribution(latencies: list[float], save_path: str | Path) -> None:
+    path = resolve_project_path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    if latencies:
+        ax.hist(latencies, bins=30, color="orange", alpha=0.7, edgecolor="black")
+        mean_lat = float(np.mean(latencies))
+        p95_lat = float(np.percentile(latencies, 95))
+        ax.axvline(mean_lat, color='red', linestyle='dashed', linewidth=1.5, label=f"Mean: {mean_lat:.2f}ms")
+        ax.axvline(p95_lat, color='blue', linestyle='dashed', linewidth=1.5, label=f"P95: {p95_lat:.2f}ms")
+    ax.set_xlabel("Inference Latency per Image (ms)")
+    ax.set_ylabel("Frequency (Batches)")
+    ax.set_title("Inference Latency Distribution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def save_report(report: dict[str, Any], save_path: str | Path) -> None:
     path = resolve_project_path(save_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -235,6 +298,7 @@ def predict_loader(
         "latency_ms_p95_per_image": float(np.percentile(batch_latencies, 95))
         if batch_latencies
         else 0.0,
+        "raw_latencies": batch_latencies,
     }
     return all_labels, probs, latency
 
@@ -257,10 +321,18 @@ def evaluate_classifier(
     plot_confusion_matrix(
         labels, probs, threshold, f"{artifact_prefix}_confusion_matrix.png"
     )
+    plot_normalized_confusion_matrix(
+        labels, probs, threshold, f"{artifact_prefix}_confusion_matrix_pct.png"
+    )
     plot_roc_curve(labels, probs, f"{artifact_prefix}_roc.png")
     plot_pr_curve(labels, probs, f"{artifact_prefix}_pr.png")
     plot_score_distribution(labels, probs, f"{artifact_prefix}_score_dist.png")
     plot_det_curve(labels, probs, f"{artifact_prefix}_det.png")
     plot_calibration_curve_diag(labels, probs, f"{artifact_prefix}_calibration.png")
+    plot_threshold_sweep(labels, probs, f"{artifact_prefix}_threshold_sweep.png")
+    
+    raw_lat = latency.pop("raw_latencies", [])
+    plot_latency_distribution(raw_lat, f"{artifact_prefix}_latency_dist.png")
+    
     save_report(report, f"{artifact_prefix}_report.json")
     return report
