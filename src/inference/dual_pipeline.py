@@ -11,6 +11,7 @@ from src.inference.pipeline import SingleCamPipeline, build_pipeline
 from src.inference.result import VerificationResult
 from src.input.dual_camera import DualCameraCapture
 from src.input.frame import Frame
+from src.training.train_baseline import get_device
 from src.utils.config import get_pipeline_config
 
 

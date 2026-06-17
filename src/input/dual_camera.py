@@ -44,7 +44,10 @@ class DualCameraCapture:
     def _reader(self, camera_id: int, index: int) -> None:
         cap = self._open_camera(index)
         if not cap.isOpened():
-            return
+            print(f"WARNING: Camera {index} failed. Falling back to Camera 0!")
+            cap = self._open_camera(0)
+            if not cap.isOpened():
+                return
         q = self.left_q if camera_id == 0 else self.right_q
         frame_index = 0
         while not self._stop.is_set():
