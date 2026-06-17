@@ -9,6 +9,7 @@ import numpy as np
 class FaceResult:
     bbox: np.ndarray
     landmarks: np.ndarray
+    dense_landmarks: np.ndarray | None = None
     confidence: float
     embedding: np.ndarray | None = None
 
@@ -75,7 +76,10 @@ class FaceDetector:
                 norm = np.linalg.norm(emb)
                 if norm > 0:
                     emb = emb / norm
-            results.append(FaceResult(bbox=bbox, landmarks=landmarks, confidence=score, embedding=emb))
+            dense_lmk = getattr(face, "landmark_2d_106", None)
+            if dense_lmk is not None:
+                dense_lmk = np.asarray(dense_lmk, dtype=np.float32)
+            results.append(FaceResult(bbox=bbox, landmarks=landmarks, dense_landmarks=dense_lmk, confidence=score, embedding=emb))
         return sorted(results, key=lambda f: f.area, reverse=True)
 
     def detect_best(self, img: np.ndarray) -> FaceResult | None:
