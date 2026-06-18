@@ -300,21 +300,33 @@ This chapter thoroughly defines the highly optimized internal logic and rigorous
 \section{High Level System Architecture}
 The core system architecture explicitly prevents massive dependency overlaps by maintaining incredibly strict code modularity. 
 
-\begin{figure}[H]
+The six core structural software layers are defined exactly as:
+\begin{enumerate}
+    \item \textbf{Input Layer:} Aggressively handles the dual webcam continuous timestamp synchronization and buffers incoming high definition optical arrays.
+    \item \textbf{Localization Layer:} Executes advanced facial detection and precise geometric spatial alignment utilizing the RetinaFace backbone.
+    \item \textbf{Identity Layer:} Computes the mathematical identity embedding matrix via the ArcFace convolutional network.
+    \item \textbf{Geometric Defense Layer:} Computes spatial disparity and structural depth variance mathematically to block flat printed presentation attacks.
+    \item \textbf{Model Layer:} Probabilistically evaluates the genuine visual authenticity via LoRA EfficientNet B0 to prevent synthetic autoencoder manipulation.
+    \item \textbf{Decision Layer:} Mathematically fuses the predictive metrics and strictly enforces rigid acceptance probability thresholds.
+\end{enumerate}
+
+\begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[node distance=1.5cm, auto,
-    box/.style={rectangle, draw=black, thick, fill=gray!10, text width=6cm, align=center, minimum height=1.5cm, rounded corners},
+\begin{tikzpicture}[node distance=0.8cm, auto,
+    box/.style={rectangle, draw=black, thick, fill=gray!10, text width=6cm, align=center, minimum height=1.2cm, rounded corners},
     arrow/.style={thick, -{Latex[length=3mm, width=2mm]}}]
     
     \node[box] (input) {Dual Webcam Input\\(Synchronized Parallel Frames)};
-    \node[box, below=1cm of input] (retina) {Localization and Identity\\(RetinaFace and ArcFace Extraction)};
-    \node[box, below=1cm of retina] (sgbm) {Geometric Depth Analysis\\(Stereo Disparity and Variance Check)};
-    \node[box, below=1cm of sgbm] (effnet) {Deepfake Evaluation\\(LoRA EfficientNet B0 Probability)};
-    \node[box, below=1cm of effnet] (fusion) {Score Fusion Engine\\(Mean Fake, Max Match)};
-    \node[box, below=1cm of fusion] (decision) {Final Execution Decision\\(Accept or Reject)};
+    \node[box, below=0.8cm of input] (retina) {Facial Localization\\(RetinaFace Landmarks)};
+    \node[box, below=0.8cm of retina] (arcface) {Identity Extraction\\(ArcFace 512D Embedding)};
+    \node[box, below=0.8cm of arcface] (sgbm) {Geometric Depth Analysis\\(Stereo Disparity and Variance Check)};
+    \node[box, below=0.8cm of sgbm] (effnet) {Deepfake Evaluation\\(LoRA EfficientNet B0 Probability)};
+    \node[box, below=0.8cm of effnet] (fusion) {Score Fusion Engine\\(Mean Fake, Max Match)};
+    \node[box, below=0.8cm of fusion] (decision) {Final Execution Decision\\(Accept or Reject)};
     
     \draw[arrow] (input) -- (retina);
-    \draw[arrow] (retina) -- (sgbm);
+    \draw[arrow] (retina) -- (arcface);
+    \draw[arrow] (arcface) -- (sgbm);
     \draw[arrow] (sgbm) -- (effnet);
     \draw[arrow] (effnet) -- (fusion);
     \draw[arrow] (fusion) -- (decision);
@@ -323,15 +335,6 @@ The core system architecture explicitly prevents massive dependency overlaps by 
 \label{fig:arch_flowchart}
 \end{figure}
 
-The five core structural software layers are defined exactly as:
-\begin{enumerate}
-    \item \textbf{Input Layer:} Aggressively handles the dual webcam continuous timestamp synchronization and buffers incoming high definition optical arrays.
-    \item \textbf{Face Processing Layer:} Executes advanced facial detection, geometric spatial alignment, and computes the mathematical identity embedding matrix via the InsightFace wrapper.
-    \item \textbf{Geometric Defense Layer:} Computes spatial disparity and structural depth variance mathematically to block flat printed presentation attacks.
-    \item \textbf{Model Layer:} Probabilistically evaluates the genuine visual authenticity via LoRA EfficientNet B0 to prevent synthetic autoencoder manipulation.
-    \item \textbf{Decision Layer:} Mathematically fuses the predictive metrics and strictly enforces rigid acceptance probability thresholds.
-\end{enumerate}
-
 \section{Dual Camera Runtime Flow and Threading}
 The dual camera inference protocol relies heavily on evaluating massive parallel video streams completely seamlessly. The codebase explicitly executes the following strictly ordered logic pipeline:
 
@@ -339,7 +342,7 @@ The dual camera inference protocol relies heavily on evaluating massive parallel
 Two standard webcam streams continuously poll simultaneously utilizing distinct asynchronous memory threads. Every incoming optical video frame immediately receives a strict microsecond precision timestamp. The software system repeatedly searches the memory queue for the nearest left frame and right frame pairing. If the absolute temporal sync difference geometrically exceeds fifty milliseconds, the frame pair is ruthlessly discarded immediately to fundamentally prevent asynchronous evaluation errors.
 
 \subsection{Localization, Identity, and Depth Analysis}
-Once a perfectly synchronized dual frame pair is successfully captured, the software executes the InsightFace wrapper. This wrapper simultaneously runs RetinaFace to extract precise facial landmarks and ArcFace to generate the massive mathematical identity embedding vector. Following this extraction, the pipeline immediately runs the Geometric Stereo Depth Analysis utilizing the precomputed landmarks. If the calculated geometric depth variance falls below the organic human threshold indicating a flat printed photograph or iPad screen the pipeline immediately applies a massive mathematical spoof penalty.
+Once a perfectly synchronized dual frame pair is successfully captured, the software executes the InsightFace wrapper. This wrapper runs RetinaFace to extract precise facial landmarks and subsequently executes ArcFace to generate the massive mathematical identity embedding vector. Following this extraction, the pipeline immediately runs the Geometric Stereo Depth Analysis utilizing the precomputed landmarks. If the calculated geometric depth variance falls below the organic human threshold indicating a flat printed photograph or iPad screen the pipeline immediately applies a massive mathematical spoof penalty.
 
 \subsection{Deepfake Evaluation and Statistical Score Fusion}
 Following the geometric depth analysis, the system mathematically aligns and crops the facial matrices. These standardized pixel arrays are fed directly into the LoRA EfficientNet deep learning model. EfficientNet mathematically outputs a synthetic probability score completely independently for both parallel frames. 
