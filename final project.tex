@@ -16,6 +16,23 @@
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning}
 \usepackage[bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Dual Camera Face Verification System with Stereo Vision Based Liveness Detection and Deepfake Prevention}, pdfauthor={Shivratan, Arsalan Bashir}, pdfsubject={Final Project Report}]{hyperref}
 \usepackage{times} % Explicitly enforce Times New Roman font
+\usepackage{fancyhdr}
+
+% Configure consistent headers with page numbers
+\setlength{\headheight}{15pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Dual Camera Face Verification System}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Force chapter-starting pages to also use the header format
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[L]{Dual Camera Face Verification System}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
 
 \makenomenclature
 
