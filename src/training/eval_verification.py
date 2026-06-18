@@ -197,6 +197,12 @@ def main() -> None:
     )
     args = parser.parse_args()
     cfg = get_dataset_config()
+    
+    from src.training.train_baseline import get_device
+    device = get_device("auto")
+    if args.ctx_id < 0 and device.type in ("cuda", "mps"):
+        args.ctx_id = 0
+        
     report = evaluate_lfw(
         args.pairs_file or cfg["raw"]["lfw_pairs"],
         args.lfw_root or cfg["raw"]["lfw"],

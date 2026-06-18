@@ -11,7 +11,9 @@ from src.inference.pipeline import SingleCamPipeline, build_pipeline
 from src.inference.result import VerificationResult
 from src.input.dual_camera import DualCameraCapture
 from src.input.frame import Frame
+from src.training.train_baseline import get_device
 from src.utils.config import get_pipeline_config
+from src.face.depth import estimate_stereo_depth
 
 
 def fuse_scores(
@@ -59,8 +61,30 @@ class DualCamPipeline:
         self, left_frame: Frame, right_frame: Frame, user_id: str
     ) -> VerificationResult:
         started = time.perf_counter()
-        left = self.single_pipeline.run(left_frame.img, user_id)
-        right = self.single_pipeline.run(right_frame.img, user_id)
+        
+        # 1. Precompute faces to get dense 106-landmarks for depth mapping
+        left_face = self.single_pipeline.detector.detect_best(left_frame.img)
+        right_face = self.single_pipeline.detector.detect_best(right_frame.img)
+        
+        # 2. Geometric Stereo Depth Analysis (Zero-Shot Anti-Spoofing)
+        depth_variance = 0.0
+        if left_face and right_face:
+            try:
+                depth_variance = estimate_stereo_depth(left_frame.img, right_frame.img, left_face, right_face)
+            except Exception as e:
+                import logging
+                logging.error(f"Stereo depth failed: {e}")
+                depth_variance = 0.0
+            
+        # 3. Run full Deep Learning pipeline
+        left = self.single_pipeline.run(left_frame.img, user_id, precomputed_face=left_face)
+        right = self.single_pipeline.run(right_frame.img, user_id, precomputed_face=right_face)
+        
+        # 4. If geometry indicates a completely flat object (e.g. iPad, photo), override the AI's fake score!
+        if left.face_detected and right.face_detected and depth_variance > 0 and depth_variance < 1.0:
+            # Massive spoof penalty for flat depth
+            left.fake_score = max(left.fake_score, 0.99)
+            right.fake_score = max(right.fake_score, 0.99)
         if not self.fallback_single_view and (
             not left.face_detected or not right.face_detected
         ):
@@ -129,6 +153,9 @@ def build_dual_pipeline(
     device: str = "auto", checkpoint: str | None = None, ctx_id: int = -1
 ) -> DualCamPipeline:
     cfg = get_pipeline_config()
+    device = get_device(device)
+    if ctx_id < 0 and device.type in ("cuda", "mps"):
+        ctx_id = 0
     single = build_pipeline(device, checkpoint, ctx_id)
     decision = DecisionEngine(
         fake_threshold=float(cfg["dual_camera"]["fake_threshold"]),

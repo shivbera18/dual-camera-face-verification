@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual-Camera Face Verification</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>Face <span>Verification</span></h1>
+            <p>High-security anti-spoofing and identity matching</p>
+        </header>
+
+        <main>
+            <div class="video-container">
+                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Live Camera Feed">
+                
+                <!-- Step 2: Verification Overlay (Hidden initially) -->
+                <div class="status-overlay hidden" id="step-2-verify">
+                    <h2 id="decision-text">WAITING</h2>
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="label">Fake Score</span>
+                            <span class="value" id="fake-score">0.00</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Match Score</span>
+                            <span class="value" id="match-score">0.00</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Latency</span>
+                            <span class="value" id="latency">0 ms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="controls">
+                <!-- Step 1: Enrollment Setup -->
+                <div class="card" id="step-1-enroll">
+                    <h3>Step 1: Setup Profile</h3>
+                    <p class="help-text">Welcome! Let's get your face securely registered. Please enter your name below and look directly at the camera.</p>
+                    <div class="input-group">
+                        <input type="text" id="enroll-user" placeholder="Enter your name...">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="login-btn" class="btn outline" style="flex: 1;">Login (Existing User)</button>
+                            <button id="enroll-btn" class="btn primary" style="flex: 1;">Register (New User)</button>
+                        </div>
+                    </div>
+                    <div id="enrollment-status" style="margin-top: 15px; color: var(--primary); font-weight: 600; text-align: center;"></div>
+                </div>
+                
+                <!-- Displayed during Step 2 so user knows who they are checking against -->
+                <div class="card hidden" id="step-2-info">
+                    <h3>Active Profile</h3>
+                    <p class="help-text">Currently verifying identity for: <strong id="active-user-display" style="color:white; font-size: 1.1rem; display:block; margin-top: 5px;"></strong></p>
+                    <button id="restart-btn" class="btn outline" style="margin-top: 20px; width: 100%;">Setup New Profile</button>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
