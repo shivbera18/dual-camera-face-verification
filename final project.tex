@@ -295,7 +295,7 @@ Early generative detection networks focused exclusively on massive architectural
 
 % Chapter 5: Architecture of Our Current Methodology
 \chapter{Architecture of Our Current Methodology}
-This chapter thoroughly defines the highly optimized internal logic and rigorous high level system layers that seamlessly allow our dual camera deep learning biometric pipeline to aggressively operate without computational bottlenecks. The system is deliberately and precisely structured across five highly modular logical architectural layers.
+This chapter thoroughly defines the highly optimized internal logic and rigorous high level system layers that seamlessly allow our dual camera deep learning biometric pipeline to aggressively operate without computational bottlenecks. The system is deliberately and precisely structured across sequential execution architectures.
 
 \section{High Level System Architecture}
 The core system architecture explicitly prevents massive dependency overlaps by maintaining incredibly strict code modularity. 
@@ -303,46 +303,48 @@ The core system architecture explicitly prevents massive dependency overlaps by 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[node distance=1.5cm, auto,
-    box/.style={rectangle, draw=black, thick, fill=gray!10, text width=5cm, align=center, minimum height=1.5cm, rounded corners},
+    box/.style={rectangle, draw=black, thick, fill=gray!10, text width=6cm, align=center, minimum height=1.5cm, rounded corners},
     arrow/.style={thick, -{Latex[length=3mm, width=2mm]}}]
     
     \node[box] (input) {Dual Webcam Input\\(Synchronized Parallel Frames)};
-    \node[box, below=1cm of input] (retina) {Face Processing Layer\\(RetinaFace Localization)};
-    \node[box, below=1.5cm of retina, xshift=-3cm] (effnet) {Deepfake Evaluation\\(LoRA EfficientNet B0)};
-    \node[box, right=1cm of effnet] (arcface) {Identity Extraction\\(ArcFace 512D Embedding)};
-    \node[box, below=1.5cm of effnet, xshift=3cm] (fusion) {Score Fusion Engine\\(Mean Fake, Max Match)};
+    \node[box, below=1cm of input] (retina) {Localization and Identity\\(RetinaFace and ArcFace Extraction)};
+    \node[box, below=1cm of retina] (sgbm) {Geometric Depth Analysis\\(Stereo Disparity and Variance Check)};
+    \node[box, below=1cm of sgbm] (effnet) {Deepfake Evaluation\\(LoRA EfficientNet B0 Probability)};
+    \node[box, below=1cm of effnet] (fusion) {Score Fusion Engine\\(Mean Fake, Max Match)};
     \node[box, below=1cm of fusion] (decision) {Final Execution Decision\\(Accept or Reject)};
     
     \draw[arrow] (input) -- (retina);
-    \draw[arrow] (retina) -- ++(0,-1cm) -| (effnet);
-    \draw[arrow] (retina) -- ++(0,-1cm) -| (arcface);
-    \draw[arrow] (effnet) |- (fusion);
-    \draw[arrow] (arcface) |- (fusion);
+    \draw[arrow] (retina) -- (sgbm);
+    \draw[arrow] (sgbm) -- (effnet);
+    \draw[arrow] (effnet) -- (fusion);
     \draw[arrow] (fusion) -- (decision);
 \end{tikzpicture}
-\caption{System Architecture Flowchart mathematically detailing parallel neural module execution and probabilistic metric fusion logic.}
+\caption{System Architecture Flowchart mathematically detailing sequential execution and probabilistic metric fusion logic.}
 \label{fig:arch_flowchart}
 \end{figure}
 
 The five core structural software layers are defined exactly as:
 \begin{enumerate}
     \item \textbf{Input Layer:} Aggressively handles the dual webcam continuous timestamp synchronization and buffers incoming high definition optical arrays.
-    \item \textbf{Face Processing Layer:} Executes advanced facial detection, geometric spatial alignment, and standardized mathematical pixel cropping utilizing the RetinaFace backbone.
-    \item \textbf{Model Layer:} Probabilistically evaluates the genuine visual authenticity via LoRA EfficientNet B0 and simultaneously calculates the deep identity embedding matrix via ArcFace.
-    \item \textbf{Decision Layer:} Mathematically fuses the parallel predictive metrics and strictly enforces rigid acceptance probability thresholds.
-    \item \textbf{Storage and Logging Layer:} Persists identity enrollment geometric templates securely and permanently logs all forensic authentication attempts for systemic review.
+    \item \textbf{Face Processing Layer:} Executes advanced facial detection, geometric spatial alignment, and computes the mathematical identity embedding matrix via the InsightFace wrapper.
+    \item \textbf{Geometric Defense Layer:} Computes spatial disparity and structural depth variance mathematically to block flat printed presentation attacks.
+    \item \textbf{Model Layer:} Probabilistically evaluates the genuine visual authenticity via LoRA EfficientNet B0 to prevent synthetic autoencoder manipulation.
+    \item \textbf{Decision Layer:} Mathematically fuses the predictive metrics and strictly enforces rigid acceptance probability thresholds.
 \end{enumerate}
 
 \section{Dual Camera Runtime Flow and Threading}
-The dual camera inference protocol relies heavily on evaluating massive parallel video streams completely seamlessly. This advanced runtime flow explicitly executes the baseline neural network layer completely independently across both parallel optical views before mathematically fusing the probabilistic scores.
+The dual camera inference protocol relies heavily on evaluating massive parallel video streams completely seamlessly. The codebase explicitly executes the following strictly ordered logic pipeline:
 
 \subsection{Synchronized Capture Sequence}
 Two standard webcam streams continuously poll simultaneously utilizing distinct asynchronous memory threads. Every incoming optical video frame immediately receives a strict microsecond precision timestamp. The software system repeatedly searches the memory queue for the nearest left frame and right frame pairing. If the absolute temporal sync difference geometrically exceeds fifty milliseconds, the frame pair is ruthlessly discarded immediately to fundamentally prevent asynchronous evaluation errors.
 
-\subsection{Parallel Evaluation and Statistical Score Fusion}
-Once a perfectly synchronized dual frame pair is successfully captured, the software executes the facial processing layer fully independently on both the left frame buffer and the right frame buffer. 
+\subsection{Localization, Identity, and Depth Analysis}
+Once a perfectly synchronized dual frame pair is successfully captured, the software executes the InsightFace wrapper. This wrapper simultaneously runs RetinaFace to extract precise facial landmarks and ArcFace to generate the massive mathematical identity embedding vector. Following this extraction, the pipeline immediately runs the Geometric Stereo Depth Analysis utilizing the precomputed landmarks. If the calculated geometric depth variance falls below the organic human threshold indicating a flat printed photograph or iPad screen the pipeline immediately applies a massive mathematical spoof penalty.
 
-EfficientNet mathematically outputs a synthetic probability score independently for both frames. The mathematical statistical fusion logic directly calculates the absolute mean average of both frame scores to comprehensively determine the final algorithmic fake probability. Simultaneously, ArcFace outputs a massive mathematical identity vector independently for both frames. The fusion logic calculates the strict mathematical maximum cosine similarity score against the encrypted database vector.
+\subsection{Deepfake Evaluation and Statistical Score Fusion}
+Following the geometric depth analysis, the system mathematically aligns and crops the facial matrices. These standardized pixel arrays are fed directly into the LoRA EfficientNet deep learning model. EfficientNet mathematically outputs a synthetic probability score completely independently for both parallel frames. 
+
+The mathematical statistical fusion logic directly calculates the absolute mean average of both frame fake scores to comprehensively determine the final algorithmic fake probability. Simultaneously, the fusion logic calculates the strict mathematical maximum cosine similarity score against the encrypted database ArcFace vector. The final Decision Engine algorithmically applies the predefined probabilistic thresholds, completely finalizing the overarching system evaluation.
 
 \section{Explicit Module Responsibilities}
 The Python codebase directly assigns highly specific computational responsibilities to totally isolated logical object classes. The Input Manager concurrently loads video frames and attaches vital timestamp metadata. The Dual Camera Capture module orchestrates the background operating system threads. The Face Detector wrapper explicitly invokes the RetinaFace convolutional layers, isolating the absolute largest bounding box. The Deepfake Detector dynamically loads our specifically fine tuned LoRA memory checkpoints, while the Embedding Extractor wraps the InsightFace framework to consistently generate the normalized dimensional identity embedding. Finally, the central Decision Engine algorithmically applies the predefined probabilistic thresholds, completely finalizing the overarching system evaluation.
