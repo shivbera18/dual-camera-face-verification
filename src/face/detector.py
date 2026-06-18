@@ -9,8 +9,8 @@ import numpy as np
 class FaceResult:
     bbox: np.ndarray
     landmarks: np.ndarray
-    dense_landmarks: np.ndarray | None = None
     confidence: float
+    dense_landmarks: np.ndarray | None = None
     embedding: np.ndarray | None = None
 
     @property

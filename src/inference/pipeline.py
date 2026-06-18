@@ -39,9 +39,9 @@ class SingleCamPipeline:
         logits = self.deepfake_model(tensor)
         return float(torch.sigmoid(logits).detach().cpu().item())
 
-    def run(self, img, user_id: str | None) -> VerificationResult:
+    def run(self, img, user_id: str | None, precomputed_face=None) -> VerificationResult:
         started = time.perf_counter()
-        face = self.detector.detect_best(img)
+        face = precomputed_face if precomputed_face is not None else self.detector.detect_best(img)
         if face is None:
             latency = (time.perf_counter() - started) * 1000.0
             return self.decision_engine.decide(
