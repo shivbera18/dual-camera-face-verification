@@ -455,14 +455,6 @@ Prior to active production deployment, the stereo setup must undergo a rigorous 
 \subsection{Lens Distortion Rectification}
 Webcams inherently suffer from radial and tangential lens distortion. This distortion causes straight geometric lines to appear heavily curved near the image borders. The calibration step identifies these distortion coefficients and completely flattens the image output mathematically.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{latest_stereo_depth.png}
-    \caption{Hardware Depth Output generated via Semi Global Block Matching post calibration. Darker visualization shades unequivocally indicate closer physical proximity to the camera lens.}
-    \label{fig:stereo_depth}
-\end{figure}
-
-The calculated calibration parameters are subsequently utilized to mathematically rectify incoming live video frames on the fly. This fundamentally aligns the epipolar lines perfectly horizontally across both optical streams.
 
 % Chapter 7: Software Implementation
 \chapter{Software Implementation}
