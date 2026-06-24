@@ -507,8 +507,6 @@ Testing Split & 15 Percent & 5250 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-\section{Aggressive Augmentation Protocol (Albumentations)}
-To actively prevent catastrophic overfitting on the training set, image augmentations heavily employ the advanced \textbf{Albumentations} python library. Neural networks have a dangerous tendency to memorize background textures rather than generalized facial structures. The protocol systematically applies Horizontal Flips (pose invariance), Extreme JPEG Compression (mimicking social media artifacting), Gaussian Noise (replicating cheap camera grain), and Coarse Dropout (randomly dropping black squares to force the network to learn holistic structures).
 
 % Chapter 9: Dataset Selection and Comprehensive Pipeline Metrics
 \chapter{Dataset Selection and Comprehensive Pipeline Metrics}
@@ -860,14 +858,5 @@ Loshchilov, I., and Hutter, F. (2017). Decoupled Weight Decay Regularization (Ad
 Perov, I., Gao, D., Chervoniy, V., Liu, K., Marangonda, S., Umé, C., Diks, M., Keller, C. G., Jiang, S., and Zhang, S. (2020). DeepFaceLab: Integrated, flexible and extensible face-swapping framework. arXiv preprint.
 \end{thebibliography}
 
-% Appendix
-\begin{appendices}
-\chapter{Dataset Structuring and Dual Capture Logs}
-\section{Hardware Polling Configuration}
-The dual camera continuous polling module initializes incredibly rapidly via standard highly optimized OpenCV libraries utilizing underlying C plus plus bindings. Synchronization deltas are rigorously enforced programmatically across parallel threads. If the absolute time difference between optical buffers exceeds fifty milliseconds, the frame pair is immediately discarded to prevent highly asymmetric depth calculation anomalies.
-
-\section{Complete Metrics Dump and Analytical Validation}
-The raw diagnostic mathematical outputs validating the algorithmic constraints and massive dataset scale demonstrate exceptionally precise percentages across tens of thousands of complex testing vectors. The statistical true positive and true negative algorithmic aggregations prove undeniable consistency across all randomly selected data splits, confirming there is absolutely no mathematical data leakage.
-\end{appendices}
 
 \end{document}
